@@ -4,9 +4,11 @@ import test from "node:test";
 import {
   buildBookMarkdown,
   buildGatewayPayload,
+  buildLibraryItems,
   buildWeReadNotebookReaderUrl,
   buildWeReadReaderUrl,
   filterAndSortNotebooks,
+  filterAndSortLibraryItems,
   formatDuration,
   formatReadingBucketLabel,
   getBookNoteTotal,
@@ -14,6 +16,148 @@ import {
   mergeShelfReadingMetadata,
   validateApiKey,
 } from "../app/lib/weread-core.ts";
+
+test("builds a complete shelf library while preserving notebook-only books", () => {
+  const items = buildLibraryItems({
+    notebooks: [
+      {
+        bookId: "book-notes",
+        book: { title: "旧标题", author: "作者甲", readUpdateTime: 100 },
+        noteCount: 2,
+        reviewCount: 1,
+        sort: 90,
+      },
+      {
+        bookId: "book-notebook-only",
+        book: { title: "只在笔记中", author: "作者乙" },
+        noteCount: 1,
+        sort: 80,
+      },
+    ],
+    shelfBooks: [
+      {
+        bookId: "book-notes",
+        title: "书架新标题",
+        author: "作者甲",
+        category: "文学",
+        readUpdateTime: 300,
+      },
+      {
+        bookId: "book-no-notes",
+        title: "没有笔记的书",
+        author: "作者丙",
+        readUpdateTime: 200,
+      },
+    ],
+    shelfAlbums: [
+      {
+        albumInfo: {
+          albumId: "album-1",
+          name: "通勤听书",
+          authorName: "演播者",
+          trackCount: 24,
+        },
+        albumInfoExtra: { lectureReadUpdateTime: 250 },
+      },
+    ],
+    hasArticleCollection: true,
+  });
+
+  assert.equal(items.length, 5);
+  assert.deepEqual(items.map((item) => item.kind), [
+    "book",
+    "book",
+    "book",
+    "album",
+    "articles",
+  ]);
+
+  const mergedBook = items.find(
+    (item) => item.kind === "book" && item.bookId === "book-notes",
+  );
+  assert.ok(mergedBook?.kind === "book");
+  assert.equal(mergedBook.title, "书架新标题");
+  assert.equal(mergedBook.hasNotes, true);
+  assert.equal(mergedBook.noteTotal, 3);
+  assert.equal(mergedBook.readUpdateTime, 300);
+
+  assert.ok(
+    items.some(
+      (item) =>
+        item.kind === "book" && item.bookId === "book-notebook-only",
+    ),
+  );
+});
+
+test("filters the complete library by scope, search, and existing sort modes", () => {
+  const items = buildLibraryItems({
+    notebooks: [
+      {
+        bookId: "book-notes",
+        book: { title: "有笔记", author: "作者甲" },
+        noteCount: 4,
+      },
+    ],
+    shelfBooks: [
+      {
+        bookId: "book-notes",
+        title: "有笔记",
+        author: "作者甲",
+        readUpdateTime: 100,
+      },
+      {
+        bookId: "book-plain",
+        title: "普通电子书",
+        author: "作者乙",
+        readUpdateTime: 300,
+      },
+    ],
+    shelfAlbums: [
+      {
+        albumInfo: {
+          albumId: "album-1",
+          name: "声音之书",
+          authorName: "特别演播者",
+        },
+        albumInfoExtra: { lectureReadUpdateTime: 200 },
+      },
+    ],
+    hasArticleCollection: true,
+  });
+
+  assert.deepEqual(
+    filterAndSortLibraryItems(items, {
+      query: "",
+      scope: "notes",
+      sortMode: "recent",
+    }).map((item) => item.id),
+    ["book:book-notes"],
+  );
+  assert.deepEqual(
+    filterAndSortLibraryItems(items, {
+      query: "",
+      scope: "books",
+      sortMode: "recent",
+    }).map((item) => item.id),
+    ["book:book-plain", "book:book-notes"],
+  );
+  assert.deepEqual(
+    filterAndSortLibraryItems(items, {
+      query: "特别演播者",
+      scope: "all",
+      sortMode: "title",
+    }).map((item) => item.id),
+    ["album:album-1"],
+  );
+  assert.deepEqual(
+    filterAndSortLibraryItems(items, {
+      query: "",
+      scope: "all",
+      sortMode: "notes",
+    }).map((item) => item.id),
+    ["book:book-notes", "book:book-plain", "album:album-1", "articles"],
+  );
+});
 
 test("encodes numeric WeRead API book ids for notebook reader links", () => {
   assert.equal(

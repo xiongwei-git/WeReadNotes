@@ -26,6 +26,7 @@ type NoteCountSource = {
 
 export type BookSortMode = "recent" | "notes" | "title";
 export type ReadStatsMode = "weekly" | "monthly" | "annually" | "overall";
+export type LibraryScope = "all" | "notes" | "books" | "albums";
 
 type SortableNotebook = NoteCountSource & {
   bookId: string;
@@ -40,6 +41,91 @@ type SortableNotebook = NoteCountSource & {
 type ShelfReadingBook = {
   bookId: string;
   readUpdateTime?: number | null;
+};
+
+type LibraryNotebookSource = NoteCountSource & {
+  bookId: string;
+  sort?: number | null;
+  book: {
+    title: string;
+    author?: string;
+    cover?: string;
+    category?: string;
+    readUpdateTime?: number | null;
+  };
+};
+
+type LibraryShelfBookSource = {
+  bookId: string;
+  title?: string;
+  author?: string;
+  cover?: string;
+  category?: string;
+  deepLink?: string;
+  readUpdateTime?: number | null;
+  secret?: number | null;
+  isTop?: number | null;
+};
+
+type LibraryShelfAlbumSource = {
+  albumInfo?: {
+    albumId?: string;
+    name?: string;
+    authorName?: string;
+    cover?: string;
+    trackCount?: number | null;
+    finishStatus?: string;
+    intro?: string;
+    updateTime?: number | null;
+  };
+  albumInfoExtra?: {
+    secret?: number | null;
+    isTop?: number | null;
+    lectureReadUpdateTime?: number | null;
+  };
+};
+
+type LibraryItemBase = {
+  id: string;
+  title: string;
+  author?: string;
+  cover?: string;
+  readUpdateTime?: number;
+  isPrivate: boolean;
+  isTop: boolean;
+};
+
+export type LibraryBookItem = LibraryItemBase & {
+  kind: "book";
+  bookId: string;
+  category?: string;
+  deepLink?: string;
+  hasNotes: boolean;
+  noteTotal: number;
+};
+
+export type LibraryAlbumItem = LibraryItemBase & {
+  kind: "album";
+  albumId: string;
+  trackCount?: number;
+  finishStatus?: string;
+  intro?: string;
+};
+
+export type LibraryArticlesItem = LibraryItemBase & {
+  kind: "articles";
+};
+
+export type LibraryItem =
+  | LibraryBookItem
+  | LibraryAlbumItem
+  | LibraryArticlesItem;
+
+export type BuildLibraryItemsOptions = {
+  notebooks: readonly LibraryNotebookSource[];
+  shelfBooks: readonly LibraryShelfBookSource[];
+  shelfAlbums: readonly LibraryShelfAlbumSource[];
+  hasArticleCollection: boolean;
 };
 
 type Chapter = {
@@ -359,6 +445,163 @@ export function filterAndSortNotebooks<T extends SortableNotebook>(
       Number(left.book.readUpdateTime ?? left.sort ?? 0)
     );
   });
+}
+
+function positiveNumber(value: unknown): number | undefined {
+  const number = Number(value) || 0;
+  return number > 0 ? number : undefined;
+}
+
+export function buildLibraryItems({
+  notebooks,
+  shelfBooks,
+  shelfAlbums,
+  hasArticleCollection,
+}: BuildLibraryItemsOptions): LibraryItem[] {
+  const notebookByBookId = new Map(
+    notebooks.map((notebook) => [notebook.bookId, notebook]),
+  );
+  const includedBookIds = new Set<string>();
+  const items: LibraryItem[] = [];
+
+  for (const shelfBook of shelfBooks) {
+    const bookId = String(shelfBook.bookId || "").trim();
+    if (!bookId || includedBookIds.has(bookId)) continue;
+
+    const notebook = notebookByBookId.get(bookId);
+    const noteTotal = notebook ? getBookNoteTotal(notebook) : 0;
+    includedBookIds.add(bookId);
+    items.push({
+      kind: "book",
+      id: `book:${bookId}`,
+      bookId,
+      title: shelfBook.title?.trim() || notebook?.book.title || "未命名书籍",
+      author: shelfBook.author?.trim() || notebook?.book.author,
+      cover: shelfBook.cover || notebook?.book.cover,
+      category: shelfBook.category || notebook?.book.category,
+      deepLink: shelfBook.deepLink,
+      readUpdateTime: positiveNumber(
+        shelfBook.readUpdateTime ??
+          notebook?.book.readUpdateTime ??
+          notebook?.sort,
+      ),
+      isPrivate: Number(shelfBook.secret) === 1,
+      isTop: Number(shelfBook.isTop) === 1,
+      hasNotes: Boolean(notebook),
+      noteTotal,
+    });
+  }
+
+  for (const notebook of notebooks) {
+    if (includedBookIds.has(notebook.bookId)) continue;
+
+    includedBookIds.add(notebook.bookId);
+    items.push({
+      kind: "book",
+      id: `book:${notebook.bookId}`,
+      bookId: notebook.bookId,
+      title: notebook.book.title || "未命名书籍",
+      author: notebook.book.author,
+      cover: notebook.book.cover,
+      category: notebook.book.category,
+      readUpdateTime: positiveNumber(
+        notebook.book.readUpdateTime ?? notebook.sort,
+      ),
+      isPrivate: false,
+      isTop: false,
+      hasNotes: true,
+      noteTotal: getBookNoteTotal(notebook),
+    });
+  }
+
+  const includedAlbumIds = new Set<string>();
+  for (const shelfAlbum of shelfAlbums) {
+    const albumId = String(shelfAlbum.albumInfo?.albumId || "").trim();
+    if (!albumId || includedAlbumIds.has(albumId)) continue;
+
+    includedAlbumIds.add(albumId);
+    items.push({
+      kind: "album",
+      id: `album:${albumId}`,
+      albumId,
+      title: shelfAlbum.albumInfo?.name?.trim() || "未命名有声书",
+      author: shelfAlbum.albumInfo?.authorName?.trim(),
+      cover: shelfAlbum.albumInfo?.cover,
+      readUpdateTime: positiveNumber(
+        shelfAlbum.albumInfoExtra?.lectureReadUpdateTime ??
+          shelfAlbum.albumInfo?.updateTime,
+      ),
+      isPrivate: Number(shelfAlbum.albumInfoExtra?.secret) === 1,
+      isTop: Number(shelfAlbum.albumInfoExtra?.isTop) === 1,
+      trackCount: positiveNumber(shelfAlbum.albumInfo?.trackCount),
+      finishStatus: shelfAlbum.albumInfo?.finishStatus,
+      intro: shelfAlbum.albumInfo?.intro,
+    });
+  }
+
+  if (hasArticleCollection) {
+    items.push({
+      kind: "articles",
+      id: "articles",
+      title: "文章收藏",
+      author: "微信读书收藏入口",
+      isPrivate: true,
+      isTop: false,
+    });
+  }
+
+  return items;
+}
+
+export function filterAndSortLibraryItems(
+  items: readonly LibraryItem[],
+  {
+    query,
+    scope,
+    sortMode,
+  }: {
+    query: string;
+    scope: LibraryScope;
+    sortMode: BookSortMode;
+  },
+): LibraryItem[] {
+  const keyword = query.trim().toLocaleLowerCase("zh-CN");
+  const titleCollator = new Intl.Collator("zh-CN", {
+    numeric: true,
+    sensitivity: "base",
+  });
+
+  return items
+    .filter((item) => {
+      if (scope === "notes" && (item.kind !== "book" || !item.hasNotes)) {
+        return false;
+      }
+      if (scope === "books" && item.kind !== "book") return false;
+      if (scope === "albums" && item.kind !== "album") return false;
+      if (!keyword) return true;
+
+      return `${item.title} ${item.author || ""}`
+        .toLocaleLowerCase("zh-CN")
+        .includes(keyword);
+    })
+    .sort((left, right) => {
+      if (sortMode === "title") {
+        return titleCollator.compare(left.title, right.title);
+      }
+
+      if (sortMode === "notes") {
+        const leftNotes = left.kind === "book" ? left.noteTotal : 0;
+        const rightNotes = right.kind === "book" ? right.noteTotal : 0;
+        return (
+          rightNotes - leftNotes ||
+          Number(right.readUpdateTime || 0) - Number(left.readUpdateTime || 0)
+        );
+      }
+
+      return (
+        Number(right.readUpdateTime || 0) - Number(left.readUpdateTime || 0)
+      );
+    });
 }
 
 export function mergeShelfReadingMetadata<

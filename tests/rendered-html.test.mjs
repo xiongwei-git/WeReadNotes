@@ -61,7 +61,13 @@ test("keeps the finished workspace UI and accessible chart interactions", async 
   assert.match(app, /最近阅读/);
   assert.match(app, /笔记最多/);
   assert.match(app, /书名排序/);
+  assert.match(app, /全部书架/);
+  assert.match(app, /有笔记/);
+  assert.match(app, /电子书/);
+  assert.match(app, /有声书/);
+  assert.match(app, /文章收藏/);
   assert.match(app, /数据看板/);
+  assert.match(app, /<WeReadMark \/>/);
   assert.match(app, /仅建议在私人设备上开启/);
   assert.match(app, /readSavedApiKey\(getBrowserApiKeyStorage\(\)\)/);
   assert.match(app, /clearSavedApiKey\(getBrowserApiKeyStorage\(\)\)/);
@@ -82,6 +88,9 @@ test("keeps the finished workspace UI and accessible chart interactions", async 
   assert.match(styles, /\.key-row \{[\s\S]*grid-template-areas:[\s\S]*"key submit"[\s\S]*"remember \."/);
   assert.match(styles, /\.key-row button \{[\s\S]*height: 50px/);
   assert.match(styles, /\.connect-card \.remember-key-option[\s\S]*white-space: nowrap/);
+  assert.match(styles, /\.library-scope-controls/);
+  assert.match(styles, /\.wordmark \{[\s\S]*font-size: 21px/);
+  assert.match(styles, /\.wordmark-symbol/);
   await assert.rejects(access(new URL("../app/_sites-preview", import.meta.url)));
   await assert.rejects(access(new URL("../public/favicon.svg", import.meta.url)));
   await access(projectRoot);

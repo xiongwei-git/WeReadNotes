@@ -2,9 +2,12 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
+import { WeReadMark } from "./components/WeReadMark";
 import {
   buildBookMarkdown,
+  buildLibraryItems,
   buildWeReadNotebookReaderUrl,
+  filterAndSortLibraryItems,
   filterAndSortNotebooks,
   formatDuration,
   formatReadingBucketLabel,
@@ -12,6 +15,8 @@ import {
   groupBookNotes,
   mergeShelfReadingMetadata,
   type BookSortMode,
+  type LibraryBookItem,
+  type LibraryScope,
   type NoteGroup,
   type ReadStatsMode,
   validateApiKey,
@@ -57,7 +62,37 @@ type NotebookResponse = {
 type ShelfResponse = {
   errcode?: number;
   errmsg?: string;
-  books?: Array<BookInfo & { readUpdateTime?: number }>;
+  books?: ShelfBook[];
+  albums?: ShelfAlbum[];
+  mp?: Record<string, unknown> | null;
+  archive?: Array<{ name?: string; bookIds?: string[] }>;
+  bookCount?: number;
+};
+
+type ShelfBook = BookInfo & {
+  deepLink?: string;
+  secret?: number;
+  isTop?: number;
+  finishReading?: number;
+  updateTime?: number;
+};
+
+type ShelfAlbum = {
+  albumInfo?: {
+    albumId?: string;
+    name?: string;
+    authorName?: string;
+    cover?: string;
+    trackCount?: number;
+    finishStatus?: string;
+    intro?: string;
+    updateTime?: number;
+  };
+  albumInfoExtra?: {
+    secret?: number;
+    isTop?: number;
+    lectureReadUpdateTime?: number;
+  };
 };
 
 type ReadLongestItem = {
@@ -122,6 +157,13 @@ const statsPeriods: Array<{ mode: ReadStatsMode; label: string }> = [
   { mode: "overall", label: "全部" },
 ];
 
+const libraryScopes: Array<{ scope: LibraryScope; label: string }> = [
+  { scope: "all", label: "全部书架" },
+  { scope: "notes", label: "有笔记" },
+  { scope: "books", label: "电子书" },
+  { scope: "albums", label: "有声书" },
+];
+
 async function callGateway<T extends { errcode?: number; errmsg?: string }>(
   apiKey: string,
   apiName: string,
@@ -173,23 +215,38 @@ async function loadAllNotebooks(apiKey: string) {
   return { books, totalBookCount: totalBookCount || books.length };
 }
 
-async function loadWorkspaceNotebooks(apiKey: string) {
+async function loadWorkspaceLibrary(apiKey: string) {
   const [notebookResult, shelfResult] = await Promise.allSettled([
     loadAllNotebooks(apiKey),
     callGateway<ShelfResponse>(apiKey, "/shelf/sync"),
   ]);
 
-  if (notebookResult.status === "rejected") throw notebookResult.reason;
+  if (
+    notebookResult.status === "rejected" &&
+    shelfResult.status === "rejected"
+  ) {
+    throw notebookResult.reason;
+  }
+
+  const notebookData =
+    notebookResult.status === "fulfilled"
+      ? notebookResult.value
+      : { books: [], totalBookCount: 0 };
+  const shelf = shelfResult.status === "fulfilled" ? shelfResult.value : null;
+  const shelfBooks = shelf?.books || [];
 
   return {
-    ...notebookResult.value,
-    books:
-      shelfResult.status === "fulfilled"
-        ? mergeShelfReadingMetadata(
-            notebookResult.value.books,
-            shelfResult.value.books || [],
-          )
-        : notebookResult.value.books,
+    ...notebookData,
+    books: shelf
+      ? mergeShelfReadingMetadata(notebookData.books, shelfBooks)
+      : notebookData.books,
+    shelfBooks,
+    shelfAlbums: shelf?.albums || [],
+    hasArticleCollection: Boolean(
+      shelf?.mp && Object.keys(shelf.mp).length > 0,
+    ),
+    notebooksAvailable: notebookResult.status === "fulfilled",
+    shelfAvailable: Boolean(shelf),
   };
 }
 
@@ -506,8 +563,12 @@ export function WeReadApp() {
   const [error, setError] = useState("");
   const [statsWarning, setStatsWarning] = useState("");
   const [notebooks, setNotebooks] = useState<Notebook[]>([]);
+  const [shelfBooks, setShelfBooks] = useState<ShelfBook[]>([]);
+  const [shelfAlbums, setShelfAlbums] = useState<ShelfAlbum[]>([]);
+  const [hasArticleCollection, setHasArticleCollection] = useState(false);
   const [stats, setStats] = useState<ReadData | null>(null);
   const [query, setQuery] = useState("");
+  const [libraryScope, setLibraryScope] = useState<LibraryScope>("all");
   const [sortMode, setSortMode] = useState<BookSortMode>("recent");
   const [view, setView] = useState<MainView>("overview");
   const [selectedBook, setSelectedBook] = useState<Notebook | null>(null);
@@ -533,7 +594,7 @@ export function WeReadApp() {
 
       setConnection("connecting");
       const [notebookResult, statsResult] = await Promise.allSettled([
-        loadWorkspaceNotebooks(key),
+        loadWorkspaceLibrary(key),
         callGateway<ReadData>(key, "/readdata/detail", { mode: "monthly" }),
       ]);
 
@@ -548,7 +609,16 @@ export function WeReadApp() {
       }
 
       setNotebooks(notebookResult.value.books);
+      setShelfBooks(notebookResult.value.shelfBooks);
+      setShelfAlbums(notebookResult.value.shelfAlbums);
+      setHasArticleCollection(notebookResult.value.hasArticleCollection);
       const warnings: string[] = [];
+      if (!notebookResult.value.shelfAvailable) {
+        warnings.push("完整书架暂时没有取到，已显示有笔记的书。");
+      }
+      if (!notebookResult.value.notebooksAvailable) {
+        warnings.push("笔记信息暂时没有取到，已显示完整书架。");
+      }
       if (statsResult.status === "fulfilled") {
         setStats(statsResult.value);
       } else {
@@ -582,6 +652,39 @@ export function WeReadApp() {
 
     return () => window.clearTimeout(restoreTimer);
   }, [connectWithApiKey]);
+
+  const libraryItems = useMemo(
+    () =>
+      buildLibraryItems({
+        notebooks,
+        shelfBooks,
+        shelfAlbums,
+        hasArticleCollection,
+      }),
+    [hasArticleCollection, notebooks, shelfAlbums, shelfBooks],
+  );
+
+  const displayedLibraryItems = useMemo(
+    () =>
+      filterAndSortLibraryItems(libraryItems, {
+        query,
+        scope: libraryScope,
+        sortMode,
+      }),
+    [libraryItems, libraryScope, query, sortMode],
+  );
+
+  const libraryScopeCounts = useMemo(
+    () => ({
+      all: libraryItems.length,
+      notes: libraryItems.filter(
+        (item) => item.kind === "book" && item.hasNotes,
+      ).length,
+      books: libraryItems.filter((item) => item.kind === "book").length,
+      albums: libraryItems.filter((item) => item.kind === "album").length,
+    }),
+    [libraryItems],
+  );
 
   const displayedBooks = useMemo(
     () => filterAndSortNotebooks(notebooks, query, sortMode),
@@ -645,6 +748,25 @@ export function WeReadApp() {
     }
   }
 
+  async function openLibraryBook(item: LibraryBookItem) {
+    const notebook = notebooks.find((book) => book.bookId === item.bookId) || {
+      bookId: item.bookId,
+      book: {
+        bookId: item.bookId,
+        title: item.title,
+        author: item.author,
+        cover: item.cover,
+        category: item.category,
+        readUpdateTime: item.readUpdateTime,
+      },
+      noteCount: 0,
+      reviewCount: 0,
+      bookmarkCount: 0,
+    };
+
+    await openBook(notebook);
+  }
+
   function disconnect() {
     clearSavedApiKey(getBrowserApiKeyStorage());
     setApiKey("");
@@ -652,6 +774,9 @@ export function WeReadApp() {
     setStorageError("");
     setConnection("idle");
     setNotebooks([]);
+    setShelfBooks([]);
+    setShelfAlbums([]);
+    setHasArticleCollection(false);
     setStats(null);
     setSelectedBook(null);
     setNoteGroups([]);
@@ -661,6 +786,7 @@ export function WeReadApp() {
     setStatsMode("monthly");
     setStatsLoading(false);
     setStatsError("");
+    setLibraryScope("all");
   }
 
   function updateApiKey(value: string) {
@@ -688,6 +814,13 @@ export function WeReadApp() {
       !saveApiKey(getBrowserApiKeyStorage(), apiKey)
     ) {
       setStorageError("浏览器无法保存 API Key，请检查隐私或存储设置。");
+    }
+  }
+
+  function updateLibraryScope(scope: LibraryScope) {
+    setLibraryScope(scope);
+    if (scope === "albums" && sortMode === "notes") {
+      setSortMode("recent");
     }
   }
 
@@ -725,7 +858,7 @@ export function WeReadApp() {
 
     try {
       const result = await refreshWeReadData({
-        loadNotebooks: () => loadWorkspaceNotebooks(apiKey),
+        loadNotebooks: () => loadWorkspaceLibrary(apiKey),
         loadStats: () =>
           callGateway<ReadData>(apiKey, "/readdata/detail", { mode: statsMode }),
         loadSelectedNotes: () =>
@@ -735,6 +868,9 @@ export function WeReadApp() {
       });
 
       setNotebooks(result.notebooks.books);
+      setShelfBooks(result.notebooks.shelfBooks);
+      setShelfAlbums(result.notebooks.shelfAlbums);
+      setHasArticleCollection(result.notebooks.hasArticleCollection);
       if (bookToRefresh) {
         const refreshedBook = result.notebooks.books.find(
           (book) => book.bookId === bookToRefresh.bookId,
@@ -742,14 +878,22 @@ export function WeReadApp() {
         if (refreshedBook) setSelectedBook(refreshedBook);
       }
 
-      let hasPartialFailure = false;
+      const warnings: string[] = [];
+      if (!result.notebooks.shelfAvailable) {
+        warnings.push("完整书架暂时没有更新，当前显示有笔记的书。");
+      }
+      if (!result.notebooks.notebooksAvailable) {
+        warnings.push("笔记信息暂时没有更新，当前显示完整书架。");
+      }
+
+      let hasPartialFailure = warnings.length > 0;
       if (result.stats.status === "fulfilled") {
         setStats(result.stats.value);
-        setStatsWarning("");
       } else {
         hasPartialFailure = true;
-        setStatsWarning(`书目已同步，但${statsPeriodLabel}阅读统计暂时没有更新。`);
+        warnings.push(`${statsPeriodLabel}阅读统计暂时没有更新。`);
       }
+      setStatsWarning(warnings.join(" "));
 
       if (result.selectedNotes.status === "fulfilled") {
         if (result.selectedNotes.value) {
@@ -797,7 +941,7 @@ export function WeReadApp() {
       <main className="connect-page">
         <header className="brand-bar">
           <a className="wordmark" href="#top" aria-label="WeRead Notes 首页">
-            <span className="wordmark-mark" aria-hidden="true">W</span>
+            <WeReadMark />
             <span>WeRead Notes</span>
           </a>
           <span className="brand-meta">微信读书笔记工作台</span>
@@ -933,7 +1077,7 @@ export function WeReadApp() {
           }}
           aria-label="返回阅读总览"
         >
-          <span className="wordmark-mark" aria-hidden="true">W</span>
+          <WeReadMark />
           <span>WeRead Notes</span>
         </button>
         <nav className="workspace-nav" aria-label="主导航">
@@ -999,16 +1143,30 @@ export function WeReadApp() {
           <div className="library-heading">
             <div>
               <span className="section-index">LIBRARY</span>
-              <h2>有笔记的书</h2>
+              <h2>我的书架</h2>
             </div>
-            <strong>{notebooks.length}</strong>
+            <strong>{libraryScopeCounts[libraryScope]}</strong>
+          </div>
+          <div className="library-scope-controls" aria-label="书架内容范围">
+            {libraryScopes.map(({ scope, label }) => (
+              <button
+                key={scope}
+                type="button"
+                className={libraryScope === scope ? "active" : ""}
+                aria-pressed={libraryScope === scope}
+                onClick={() => updateLibraryScope(scope)}
+              >
+                <span>{label}</span>
+                <small>{libraryScopeCounts[scope]}</small>
+              </button>
+            ))}
           </div>
           <label className="book-search">
-            <span className="sr-only">搜索书名或作者</span>
+            <span className="sr-only">搜索书名、作者或演播者</span>
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="搜索书名、作者…"
+              placeholder="搜索书名、作者、演播者…"
               type="search"
             />
           </label>
@@ -1025,6 +1183,7 @@ export function WeReadApp() {
                 type="button"
                 className={sortMode === mode ? "active" : ""}
                 aria-pressed={sortMode === mode}
+                disabled={libraryScope === "albums" && mode === "notes"}
                 onClick={() => setSortMode(mode)}
               >
                 {label}
@@ -1032,24 +1191,74 @@ export function WeReadApp() {
             ))}
           </div>
           <div className="book-list">
-            {displayedBooks.map((notebook) => (
-              <button
-                key={notebook.bookId}
-                className={`book-list-item ${selectedBook?.bookId === notebook.bookId ? "selected" : ""}`}
-                onClick={() => void openBook(notebook)}
-              >
-                <BookCover book={notebook.book} compact />
-                <span className="book-list-copy">
-                  <strong>{notebook.book.title}</strong>
-                  <span>{notebook.book.author || "作者未知"}</span>
-                  <small>{getBookNoteTotal(notebook)} 条记录</small>
-                </span>
-              </button>
-            ))}
-            {displayedBooks.length === 0 ? (
+            {displayedLibraryItems.map((item) => {
+              const coverBook: BookInfo = {
+                bookId:
+                  item.kind === "book"
+                    ? item.bookId
+                    : item.kind === "album"
+                      ? item.albumId
+                      : item.id,
+                title: item.title,
+                author: item.author,
+                cover: item.cover,
+              };
+              const metadata =
+                item.kind === "book"
+                  ? item.hasNotes
+                    ? `${item.noteTotal} 条记录`
+                    : `${item.category || "电子书"} · 暂无笔记`
+                  : item.kind === "album"
+                    ? [
+                        "有声书",
+                        item.trackCount ? `${item.trackCount} 集` : "",
+                        item.finishStatus || "",
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")
+                    : "文章收藏入口";
+              const content = (
+                <>
+                  <BookCover book={coverBook} compact />
+                  <span className="book-list-copy">
+                    <strong>{item.title}</strong>
+                    <span>{item.author || "作者未知"}</span>
+                    <small>{metadata}</small>
+                  </span>
+                </>
+              );
+
+              return item.kind === "book" ? (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={`book-list-item ${selectedBook?.bookId === item.bookId ? "selected" : ""}`}
+                  onClick={() => void openLibraryBook(item)}
+                >
+                  {content}
+                </button>
+              ) : (
+                <div
+                  key={item.id}
+                  className="book-list-item book-list-item-static"
+                  aria-label={`${item.kind === "album" ? "有声书" : "文章收藏"}：${item.title}`}
+                >
+                  {content}
+                </div>
+              );
+            })}
+            {displayedLibraryItems.length === 0 ? (
               <div className="empty-list">
-                <p>没有找到匹配的书。</p>
-                <button type="button" onClick={() => setQuery("")}>清空搜索</button>
+                <p>没有找到匹配的书架内容。</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setQuery("");
+                    setLibraryScope("all");
+                  }}
+                >
+                  {query ? "清空搜索" : "查看全部书架"}
+                </button>
               </div>
             ) : null}
           </div>
