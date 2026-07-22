@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 const WECHAT_APP_ID = "wx1a90de06643413f0";
 const SHARE_LINK = "https://wereadnotes.tedxiong.com/";
@@ -18,6 +18,12 @@ type WeChatSharePayload = {
   desc: string;
   link: string;
   imgUrl: string;
+  success?: () => void;
+  fail?: (result: WeChatApiResult) => void;
+};
+
+type WeChatApiResult = {
+  errMsg?: string;
 };
 
 type WeChatSdk = {
@@ -29,7 +35,7 @@ type WeChatSdk = {
     signature: string;
     jsApiList: string[];
   }): void;
-  error(callback: () => void): void;
+  error(callback: (result: WeChatApiResult) => void): void;
   ready(callback: () => void): void;
   updateAppMessageShareData(payload: WeChatSharePayload): void;
   updateTimelineShareData(payload: WeChatSharePayload): void;
@@ -41,6 +47,30 @@ type SignatureResponse = {
   nonceStr: string;
   signature: string;
 };
+
+type DiagnosticKey = "environment" | "sdk" | "signature" | "config" | "share";
+type DiagnosticStatus = "pending" | "success" | "error";
+type DiagnosticItem = {
+  key: DiagnosticKey;
+  label: string;
+  status: DiagnosticStatus;
+  detail: string;
+};
+
+const INITIAL_DIAGNOSTICS: DiagnosticItem[] = [
+  { key: "environment", label: "微信环境", status: "pending", detail: "等待检测" },
+  { key: "sdk", label: "JS-SDK", status: "pending", detail: "等待加载" },
+  { key: "signature", label: "页面签名", status: "pending", detail: "等待请求" },
+  { key: "config", label: "权限配置", status: "pending", detail: "等待 wx.ready" },
+  { key: "share", label: "分享接口", status: "pending", detail: "等待设置" },
+];
+
+class SignatureFetchError extends Error {
+  constructor(readonly diagnostic: string) {
+    super("WeChat signature unavailable");
+    this.name = "SignatureFetchError";
+  }
+}
 
 declare global {
   interface Window {
@@ -128,31 +158,122 @@ async function fetchSignature(pageUrl: string): Promise<SignatureResponse> {
       headers: { Accept: "application/json" },
     },
   );
-  const data: unknown = await response.json();
+  let data: unknown;
+  try {
+    data = await response.json();
+  } catch {
+    throw new SignatureFetchError(`HTTP ${response.status} · 响应不是 JSON`);
+  }
 
-  if (!response.ok || !isSignatureResponse(data)) {
-    throw new Error("WeChat signature unavailable");
+  if (!response.ok) {
+    const code =
+      data && typeof data === "object" && !Array.isArray(data)
+        ? (data as { error?: { code?: unknown } }).error?.code
+        : undefined;
+    throw new SignatureFetchError(
+      `HTTP ${response.status}${typeof code === "string" ? ` · ${code}` : ""}`,
+    );
+  }
+  if (!isSignatureResponse(data)) {
+    throw new SignatureFetchError("签名响应字段无效");
   }
   return data;
 }
 
+function safeWeChatMessage(result: WeChatApiResult): string {
+  return typeof result.errMsg === "string" && result.errMsg
+    ? result.errMsg.slice(0, 160)
+    : "微信客户端未返回错误详情";
+}
+
 export function WeChatShareSetup() {
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
+  const [diagnostics, setDiagnostics] =
+    useState<DiagnosticItem[]>(INITIAL_DIAGNOSTICS);
+
   useEffect(() => {
-    if (!/MicroMessenger/i.test(navigator.userAgent)) {
-      return;
+    const debugEnabled =
+      new URLSearchParams(window.location.search).get("wechatDebug") === "1";
+    const isWeChat = /MicroMessenger/i.test(navigator.userAgent);
+    let cancelled = false;
+
+    if (debugEnabled) {
+      queueMicrotask(() => {
+        if (!cancelled) {
+          setShowDiagnostics(true);
+        }
+      });
     }
 
-    let cancelled = false;
-    const pageUrl = window.location.href.split("#", 1)[0];
+    const updateDiagnostic = (
+      key: DiagnosticKey,
+      status: DiagnosticStatus,
+      detail: string,
+    ) => {
+      setDiagnostics((current) =>
+        current.map((item) =>
+          item.key === key ? { ...item, status, detail } : item,
+        ),
+      );
+    };
 
-    Promise.all([loadWeChatSdk(), fetchSignature(pageUrl)])
+    if (!isWeChat) {
+      if (debugEnabled) {
+        updateDiagnostic("environment", "error", "当前不是微信内置浏览器");
+      }
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    const pageUrl = window.location.href.split("#", 1)[0];
+    updateDiagnostic("environment", "success", "已识别 Android/iOS 微信环境");
+    updateDiagnostic("sdk", "pending", "正在加载 jweixin-1.6.0.js");
+    updateDiagnostic("signature", "pending", "正在请求同源签名");
+
+    const sdk = loadWeChatSdk()
+      .then((value) => {
+        if (!cancelled) {
+          updateDiagnostic("sdk", "success", "微信官方脚本已加载");
+        }
+        return value;
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          updateDiagnostic("sdk", "error", "微信官方脚本加载失败");
+        }
+        throw error;
+      });
+
+    const signature = fetchSignature(pageUrl)
+      .then((value) => {
+        if (!cancelled) {
+          updateDiagnostic("signature", "success", "同源签名已返回");
+        }
+        return value;
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          updateDiagnostic(
+            "signature",
+            "error",
+            error instanceof SignatureFetchError
+              ? error.diagnostic
+              : "签名请求失败",
+          );
+        }
+        throw error;
+      });
+
+    Promise.all([sdk, signature])
       .then(([wx, signature]) => {
         if (cancelled) {
           return;
         }
 
+        updateDiagnostic("config", "pending", "已调用 wx.config，等待 ready");
         wx.config({
-          debug: false,
+          debug: debugEnabled,
           appId: signature.appId,
           timestamp: signature.timestamp,
           nonceStr: signature.nonceStr,
@@ -168,16 +289,41 @@ export function WeChatShareSetup() {
             return;
           }
 
-          const payload = {
+          updateDiagnostic("config", "success", "wx.ready 已触发");
+          updateDiagnostic("share", "pending", "正在设置分享给朋友");
+          const payload: WeChatSharePayload = {
             title: SHARE_TITLE,
             desc: SHARE_DESCRIPTION,
             link: SHARE_LINK,
             imgUrl: SHARE_IMAGE,
+            success: () => {
+              if (!cancelled) {
+                updateDiagnostic(
+                  "share",
+                  "success",
+                  "updateAppMessageShareData:ok",
+                );
+              }
+            },
+            fail: (result) => {
+              if (!cancelled) {
+                updateDiagnostic("share", "error", safeWeChatMessage(result));
+              }
+            },
           };
           wx.updateAppMessageShareData(payload);
-          wx.updateTimelineShareData(payload);
+          wx.updateTimelineShareData({
+            title: SHARE_TITLE,
+            desc: SHARE_DESCRIPTION,
+            link: SHARE_LINK,
+            imgUrl: SHARE_IMAGE,
+          });
         });
-        wx.error(() => undefined);
+        wx.error((result) => {
+          if (!cancelled) {
+            updateDiagnostic("config", "error", safeWeChatMessage(result));
+          }
+        });
       })
       .catch(() => undefined);
 
@@ -186,5 +332,33 @@ export function WeChatShareSetup() {
     };
   }, []);
 
-  return null;
+  if (!showDiagnostics) {
+    return null;
+  }
+
+  return (
+    <aside
+      className="wechat-debug-panel"
+      role="status"
+      aria-live="polite"
+      aria-label="微信分享诊断"
+    >
+      <div className="wechat-debug-heading">
+        <strong>微信分享诊断</strong>
+        <span>仅调试模式</span>
+      </div>
+      <p>只显示运行状态，不包含 AppSecret、Token、ticket 或签名。</p>
+      <ol>
+        {diagnostics.map((item) => (
+          <li key={item.key} data-status={item.status}>
+            <span className="wechat-debug-dot" aria-hidden="true" />
+            <div>
+              <strong>{item.label}</strong>
+              <span>{item.detail}</span>
+            </div>
+          </li>
+        ))}
+      </ol>
+    </aside>
+  );
 }

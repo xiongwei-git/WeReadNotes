@@ -30,6 +30,7 @@
 - 增加 `scripts/baota-update.sh` 更新脚本：校验 Node LTS、分支和干净工作区，只允许 fast-forward 拉取，随后执行锁定依赖安装与生产构建；成功后由用户在宝塔面板手动重启并验收。
 - 补齐网站分享元数据：canonical、robots、Open Graph、Twitter Card、favicon 和 Apple Touch Icon；新增 512×512 高对比书页分享封面，供微信分享卡片抓取。
 - 接入微信公众号 JS-SDK 分享：发布域名验证文件，服务端按同源页面生成 SHA-1 签名并缓存 `access_token/jsapi_ticket`，微信内调用 `updateAppMessageShareData` 和 `updateTimelineShareData`；公众号 AppID 可公开，AppSecret 仅通过服务器运行时环境读取。
+- 增加仅由 `?wechatDebug=1` 启用的微信分享诊断面板：展示微信环境、SDK 加载、页面签名、权限配置和分享接口五个阶段，并在 Android 微信中开启 JS-SDK 原生调试提示；诊断信息不包含 AppSecret、Token、ticket 或签名。
 
 ## 关键决定
 
@@ -53,7 +54,7 @@
 
 - 在浏览器中完成一次端到端交互确认后，决定是否发布 Sites 预览版本。
 - 如需跨设备同步，先评审 API Key 加密、数据保留和删除策略；当前不引入数据库。
-- 宝塔部署后仍需在公众号后台配置 JS 接口安全域名和服务器出口 IP 白名单，并通过宝塔本地环境文件设置 `WECHAT_APP_SECRET`，再完成一次微信真机分享验收。
+- 微信公众号后台的 JS 接口安全域名、服务器出口 IP 白名单及宝塔 `WECHAT_APP_SECRET` 已配置，签名接口已验证；Android 微信分享仍为裸链接，待部署诊断版本后根据真机五阶段结果继续定位。
 
 ## 主要文件
 

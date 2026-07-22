@@ -97,7 +97,7 @@ test("publishes complete social sharing metadata and brand assets", async () => 
 });
 
 test("ships the WeChat domain verification and JS-SDK setup", async () => {
-  const [verification, layout, shareSetup, route, environmentExample] =
+  const [verification, layout, shareSetup, route, environmentExample, styles] =
     await Promise.all([
       readFile(
         new URL(
@@ -116,12 +116,18 @@ test("ships the WeChat domain verification and JS-SDK setup", async () => {
         "utf8",
       ),
       readFile(new URL("../.env.example", import.meta.url), "utf8"),
+      readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
     ]);
 
   assert.equal(verification.trim(), "GFIDeZ0v0AsWIl2j");
   assert.match(layout, /<WeChatShareSetup \/>/);
   assert.match(shareSetup, /updateAppMessageShareData/);
   assert.match(shareSetup, /updateTimelineShareData/);
+  assert.match(shareSetup, /wechatDebug/);
+  assert.match(shareSetup, /debug:\s*debugEnabled/);
+  assert.match(shareSetup, /role="status"/);
+  assert.match(shareSetup, /aria-live="polite"/);
+  assert.match(styles, /\.wechat-debug-panel/);
   assert.match(route, /WECHAT_APP_SECRET/);
   assert.match(route, /Cache-Control["']:\s*["']no-store/);
   assert.match(environmentExample, /^WECHAT_APP_SECRET=$/m);
