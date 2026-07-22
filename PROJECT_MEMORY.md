@@ -28,6 +28,7 @@
 - 书库扩展为完整书架，合并笔记本与 `/shelf/sync` 数据，支持全部书架、有笔记、电子书、有声书范围及文章收藏入口；品牌字标改用独立书页图形组件。
 - 增加宝塔面板源代码构建与 Node 部署教程，采用 `127.0.0.1:3100` 的 vinext 服务、宝塔 PM2 守护和 Nginx HTTPS 反向代理；明确不能按纯静态站部署。
 - 增加 `scripts/baota-update.sh` 更新脚本：校验 Node LTS、分支和干净工作区，只允许 fast-forward 拉取，随后执行锁定依赖安装与生产构建；成功后由用户在宝塔面板手动重启并验收。
+- 补齐网站分享元数据：canonical、robots、Open Graph、Twitter Card、favicon 和 Apple Touch Icon；新增 512×512 高对比书页分享封面，供微信分享卡片抓取。
 
 ## 关键决定
 
@@ -39,7 +40,7 @@
 
 ## 验证状态
 
-- `npm test`：32 项通过（含完整生产构建、宝塔更新保护、API Key 可选存储、书库排序、周期标签、Reader ID 转换、同步流程与最小字号回归测试）。
+- `npm test`：33 项通过（含完整生产构建、宝塔更新保护、分享元数据与品牌资源、API Key 可选存储、书库排序、周期标签、Reader ID 转换、同步流程与最小字号回归测试）。
 - `npm run lint`：通过。
 - `npx tsc --noEmit`：通过。
 - `npm audit --omit=dev`：0 个生产依赖漏洞。
@@ -60,3 +61,4 @@
 - `app/globals.css`：视觉系统与响应式布局。
 - `scripts/baota-update.sh`、`tests/baota-update.test.mjs`：宝塔安全更新脚本及成功、脏工作区、Node 版本和构建失败回归测试。
 - `tests/weread-core.test.ts`、`tests/rendered-html.test.mjs`：自动化验证。
+- `public/favicon.svg`、`public/share-cover.svg`、`public/share-cover.png`：站点图标与社交分享封面资源。

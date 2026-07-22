@@ -44,6 +44,58 @@ test("server-renders the WeRead Notes connection experience", async () => {
   assert.doesNotMatch(html, /wrk-[A-Za-z0-9_-]{12,}/);
 });
 
+test("publishes complete social sharing metadata and brand assets", async () => {
+  const response = await render();
+  const html = await response.text();
+  const [favicon, shareCover] = await Promise.all([
+    readFile(new URL("../public/favicon.svg", import.meta.url)),
+    readFile(new URL("../public/share-cover.png", import.meta.url)),
+  ]);
+
+  assert.match(
+    html,
+    /<link rel="canonical" href="https:\/\/wereadnotes\.tedxiong\.com\/"/i,
+  );
+  assert.match(html, /<meta property="og:type" content="website"/i);
+  assert.match(
+    html,
+    /<meta property="og:url" content="https:\/\/wereadnotes\.tedxiong\.com\/"/i,
+  );
+  assert.match(
+    html,
+    /<meta property="og:title" content="WeRead Notes｜微信读书笔记工作台"/i,
+  );
+  assert.match(
+    html,
+    /<meta property="og:description" content="连接微信读书官方 API，整理、回顾和导出你的划线与想法。"/i,
+  );
+  assert.match(
+    html,
+    /<meta property="og:image" content="https:\/\/wereadnotes\.tedxiong\.com\/share-cover\.png"/i,
+  );
+  assert.match(html, /<meta property="og:image:width" content="512"/i);
+  assert.match(html, /<meta property="og:image:height" content="512"/i);
+  assert.match(html, /<meta name="twitter:card" content="summary"/i);
+  assert.match(
+    html,
+    /<meta name="twitter:image" content="https:\/\/wereadnotes\.tedxiong\.com\/share-cover\.png"/i,
+  );
+  assert.match(
+    html,
+    /<link rel="icon" href="https:\/\/wereadnotes\.tedxiong\.com\/favicon\.svg"/i,
+  );
+  assert.match(
+    html,
+    /<link rel="apple-touch-icon" href="https:\/\/wereadnotes\.tedxiong\.com\/share-cover\.png"/i,
+  );
+  assert.match(html, /<meta name="robots" content="index, follow"/i);
+  assert.match(favicon.toString("utf8"), /<svg[\s\S]+WeRead Notes/);
+  assert.deepEqual(
+    [...shareCover.subarray(0, 8)],
+    [137, 80, 78, 71, 13, 10, 26, 10],
+  );
+});
+
 test("keeps the finished workspace UI and accessible chart interactions", async () => {
   const [packageJson, page, layout, app, styles] = await Promise.all([
     readFile(new URL("../package.json", import.meta.url), "utf8"),
@@ -92,7 +144,8 @@ test("keeps the finished workspace UI and accessible chart interactions", async 
   assert.match(styles, /\.wordmark \{[\s\S]*font-size: 21px/);
   assert.match(styles, /\.wordmark-symbol/);
   await assert.rejects(access(new URL("../app/_sites-preview", import.meta.url)));
-  await assert.rejects(access(new URL("../public/favicon.svg", import.meta.url)));
+  await access(new URL("../public/favicon.svg", import.meta.url));
+  await access(new URL("../public/share-cover.png", import.meta.url));
   await access(projectRoot);
 });
 
