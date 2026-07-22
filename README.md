@@ -10,6 +10,7 @@
 
 - 使用微信读书 API Key 连接个人阅读数据
 - 手动同步书目、阅读统计和当前书籍笔记
+- 展示完整书架，并可切换全部书架、有笔记、电子书和有声书范围
 - 按书名或作者搜索，并支持最近阅读、笔记最多、书名排序
 - 将划线和个人想法合并后按章节组织
 - 展示本周、本月、今年和全部历史的阅读数据
@@ -99,6 +100,7 @@ npx tsc --noEmit
 ```text
 app/
 ├── WeReadApp.tsx            # 工作台界面与数据加载流程
+├── components/WeReadMark.tsx # 品牌图标
 ├── api/weread/route.ts      # 微信读书同域只读代理
 ├── globals.css              # 全局视觉与响应式样式
 └── lib/
@@ -108,11 +110,20 @@ app/
 tests/                       # 单元、渲染与同步回归测试
 worker/index.ts              # Cloudflare Worker 入口
 docs/                        # 调研文档与项目截图
+scripts/baota-update.sh      # 宝塔安全更新与生产构建脚本
 ```
 
 ## 部署
 
-执行 `npm run build` 会生成可由 Cloudflare Worker 运行的 `dist/` 产物。部署环境需要支持项目当前的 vinext 与 Cloudflare Worker 配置；项目本身不需要配置微信读书 API Key 环境变量，因为 Key 由用户在页面会话中提供。
+执行 `npm run build` 会生成 `dist/` 产物，当前项目可通过 `npm run start` 启动 vinext Node 服务，也保留了 Cloudflare Worker 构建配置。项目本身不需要配置微信读书 API Key 环境变量，因为 Key 由用户在浏览器中提供。
+
+使用宝塔面板在 Linux 服务器上安装依赖、构建，并通过 PM2 与 Nginx 运行时，请参考[宝塔面板构建与部署教程](docs/BAOTA_DEPLOY.md)。
+
+已部署的宝塔服务器可以运行以下脚本完成后续更新与构建；脚本成功后，再到宝塔 Node 项目中重启服务：
+
+```bash
+bash scripts/baota-update.sh
+```
 
 ## 当前限制
 

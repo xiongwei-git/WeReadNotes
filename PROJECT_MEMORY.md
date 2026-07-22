@@ -25,6 +25,9 @@
 - 提升数据看板 Top 书籍标题至 14px，并使用中文衬线字体提高长书名可读性。
 - 提升分类偏好名称至 14px、偏好提示至 12px；阅读节奏柱状图增加鼠标悬浮与键盘聚焦气泡，展示具体周期和阅读时长。
 - 完成全局字号审查：原 8px 字号统一提升至 12px、原 9px 提升至 13px，并将其余 10–11px 辅助字号协调到 12–13px；当前显式像素字号下限为 12px。
+- 书库扩展为完整书架，合并笔记本与 `/shelf/sync` 数据，支持全部书架、有笔记、电子书、有声书范围及文章收藏入口；品牌字标改用独立书页图形组件。
+- 增加宝塔面板源代码构建与 Node 部署教程，采用 `127.0.0.1:3100` 的 vinext 服务、宝塔 PM2 守护和 Nginx HTTPS 反向代理；明确不能按纯静态站部署。
+- 增加 `scripts/baota-update.sh` 更新脚本：校验 Node LTS、分支和干净工作区，只允许 fast-forward 拉取，随后执行锁定依赖安装与生产构建；成功后由用户在宝塔面板手动重启并验收。
 
 ## 关键决定
 
@@ -36,7 +39,7 @@
 
 ## 验证状态
 
-- `npm test`：24 项通过（含完整生产构建、API Key 可选存储、书库排序、周期标签、Reader ID 转换、同步流程与最小字号回归测试）。
+- `npm test`：32 项通过（含完整生产构建、宝塔更新保护、API Key 可选存储、书库排序、周期标签、Reader ID 转换、同步流程与最小字号回归测试）。
 - `npm run lint`：通过。
 - `npx tsc --noEmit`：通过。
 - `npm audit --omit=dev`：0 个生产依赖漏洞。
@@ -55,4 +58,5 @@
 - `app/lib/weread-core.ts`：接口白名单、数据口径和笔记合并逻辑。
 - `app/lib/weread-sync.ts`：手动同步的数据加载协调与部分失败策略。
 - `app/globals.css`：视觉系统与响应式布局。
+- `scripts/baota-update.sh`、`tests/baota-update.test.mjs`：宝塔安全更新脚本及成功、脏工作区、Node 版本和构建失败回归测试。
 - `tests/weread-core.test.ts`、`tests/rendered-html.test.mjs`：自动化验证。
