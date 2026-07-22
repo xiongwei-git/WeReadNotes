@@ -11,7 +11,7 @@
 - 初始化 vinext / Next.js / Cloudflare Worker 项目。
 - 完成连接页、阅读总览、书目搜索、按章节笔记、Markdown 复制与下载。
 - 增加同域只读代理、API 白名单、参数白名单、20 秒超时和 `no-store` 响应。
-- API Key 只保留在 React 内存状态，不进入持久化存储。
+- API Key 默认只保留在 React 内存状态；用户可主动选择以明文保存到当前浏览器 `localStorage`，界面会提示私人设备与恶意扩展风险，取消保存或断开连接时清除。
 - 为官方笔记计数口径、时长格式化、网关参数和章节合并补充单元测试。
 - 使用临时 Key 完成真实接口联调：笔记本、月度统计、划线、想法和章节目录均成功返回。
 - 修复 Cloudflare Worker 不支持 `redirect: error` 的兼容问题，改用 `manual` 并拒绝 3xx。
@@ -36,7 +36,7 @@
 
 ## 验证状态
 
-- `npm test`：19 项通过（含完整生产构建、书库排序、周期标签、Reader ID 转换、同步流程与最小字号回归测试）。
+- `npm test`：24 项通过（含完整生产构建、API Key 可选存储、书库排序、周期标签、Reader ID 转换、同步流程与最小字号回归测试）。
 - `npm run lint`：通过。
 - `npx tsc --noEmit`：通过。
 - `npm audit --omit=dev`：0 个生产依赖漏洞。

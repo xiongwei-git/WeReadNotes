@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   buildBookMarkdown,
@@ -17,6 +17,12 @@ import {
   validateApiKey,
 } from "./lib/weread-core";
 import { refreshWeReadData } from "./lib/weread-sync";
+import {
+  clearSavedApiKey,
+  getBrowserApiKeyStorage,
+  readSavedApiKey,
+  saveApiKey,
+} from "./lib/weread-api-key-storage";
 
 type BookInfo = {
   bookId: string;
@@ -494,6 +500,8 @@ function ReadingDataDashboard({
 
 export function WeReadApp() {
   const [apiKey, setApiKey] = useState("");
+  const [rememberApiKey, setRememberApiKey] = useState(false);
+  const [storageError, setStorageError] = useState("");
   const [connection, setConnection] = useState<ConnectionState>("idle");
   const [error, setError] = useState("");
   const [statsWarning, setStatsWarning] = useState("");
@@ -512,6 +520,68 @@ export function WeReadApp() {
   const [statsMode, setStatsMode] = useState<ReadStatsMode>("monthly");
   const [statsLoading, setStatsLoading] = useState(false);
   const [statsError, setStatsError] = useState("");
+
+  const connectWithApiKey = useCallback(
+    async (key: string, shouldRemember: boolean) => {
+      setError("");
+      setStatsWarning("");
+
+      if (!validateApiKey(key)) {
+        setError("API Key 格式不正确，请检查后重试。");
+        return;
+      }
+
+      setConnection("connecting");
+      const [notebookResult, statsResult] = await Promise.allSettled([
+        loadWorkspaceNotebooks(key),
+        callGateway<ReadData>(key, "/readdata/detail", { mode: "monthly" }),
+      ]);
+
+      if (notebookResult.status === "rejected") {
+        setConnection("idle");
+        setError(
+          notebookResult.reason instanceof Error
+            ? notebookResult.reason.message
+            : "连接失败，请检查 API Key。",
+        );
+        return;
+      }
+
+      setNotebooks(notebookResult.value.books);
+      const warnings: string[] = [];
+      if (statsResult.status === "fulfilled") {
+        setStats(statsResult.value);
+      } else {
+        setStats(null);
+        warnings.push("笔记已连接，但本月阅读统计暂时没有取到。");
+      }
+      if (shouldRemember && !saveApiKey(getBrowserApiKeyStorage(), key)) {
+        setRememberApiKey(false);
+        warnings.push("浏览器禁止了本地存储，API Key 未保存。");
+      }
+      setStatsWarning(warnings.join(" "));
+      setApiKey(key);
+      setConnection("connected");
+      setSyncState("idle");
+      setSyncMessage("");
+      setStatsMode("monthly");
+      setStatsError("");
+    },
+    [],
+  );
+
+  useEffect(() => {
+    const restoreTimer = window.setTimeout(() => {
+      const savedApiKey = readSavedApiKey(getBrowserApiKeyStorage());
+      if (!savedApiKey) return;
+
+      setApiKey(savedApiKey);
+      setRememberApiKey(true);
+      void connectWithApiKey(savedApiKey, true);
+    }, 0);
+
+    return () => window.clearTimeout(restoreTimer);
+  }, [connectWithApiKey]);
 
   const displayedBooks = useMemo(
     () => filterAndSortNotebooks(notebooks, query, sortMode),
@@ -553,44 +623,7 @@ export function WeReadApp() {
 
   async function connect(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const key = apiKey.trim();
-    setError("");
-    setStatsWarning("");
-
-    if (!validateApiKey(key)) {
-      setError("API Key 格式不正确，请检查后重试。");
-      return;
-    }
-
-    setConnection("connecting");
-    const [notebookResult, statsResult] = await Promise.allSettled([
-      loadWorkspaceNotebooks(key),
-      callGateway<ReadData>(key, "/readdata/detail", { mode: "monthly" }),
-    ]);
-
-    if (notebookResult.status === "rejected") {
-      setConnection("idle");
-      setError(
-        notebookResult.reason instanceof Error
-          ? notebookResult.reason.message
-          : "连接失败，请检查 API Key。",
-      );
-      return;
-    }
-
-    setNotebooks(notebookResult.value.books);
-    if (statsResult.status === "fulfilled") {
-      setStats(statsResult.value);
-    } else {
-      setStats(null);
-      setStatsWarning("笔记已连接，但本月阅读统计暂时没有取到。");
-    }
-    setApiKey(key);
-    setConnection("connected");
-    setSyncState("idle");
-    setSyncMessage("");
-    setStatsMode("monthly");
-    setStatsError("");
+    await connectWithApiKey(apiKey.trim(), rememberApiKey);
   }
 
   async function openBook(notebook: Notebook) {
@@ -613,7 +646,10 @@ export function WeReadApp() {
   }
 
   function disconnect() {
+    clearSavedApiKey(getBrowserApiKeyStorage());
     setApiKey("");
+    setRememberApiKey(false);
+    setStorageError("");
     setConnection("idle");
     setNotebooks([]);
     setStats(null);
@@ -625,6 +661,34 @@ export function WeReadApp() {
     setStatsMode("monthly");
     setStatsLoading(false);
     setStatsError("");
+  }
+
+  function updateApiKey(value: string) {
+    setApiKey(value);
+    if (!rememberApiKey || !validateApiKey(value.trim())) return;
+
+    setStorageError(
+      saveApiKey(getBrowserApiKeyStorage(), value)
+        ? ""
+        : "浏览器无法保存 API Key，请检查隐私或存储设置。",
+    );
+  }
+
+  function updateRememberApiKey(remember: boolean) {
+    setRememberApiKey(remember);
+    setStorageError("");
+
+    if (!remember) {
+      clearSavedApiKey(getBrowserApiKeyStorage());
+      return;
+    }
+
+    if (
+      validateApiKey(apiKey.trim()) &&
+      !saveApiKey(getBrowserApiKeyStorage(), apiKey)
+    ) {
+      setStorageError("浏览器无法保存 API Key，请检查隐私或存储设置。");
+    }
   }
 
   async function changeStatsMode(mode: ReadStatsMode) {
@@ -750,7 +814,11 @@ export function WeReadApp() {
               连接微信读书，把散落在不同书里的划线与想法，整理成一张可搜索、可回顾、可导出的个人阅读地图。
             </p>
 
-            <form className="connect-card" onSubmit={connect}>
+            <form
+              className="connect-card"
+              onSubmit={connect}
+              aria-busy={connection === "connecting"}
+            >
               <div className="connect-card-heading">
                 <div>
                   <span className="step-kicker">01 / 连接账号</span>
@@ -765,18 +833,49 @@ export function WeReadApp() {
                   name="api-key"
                   type="password"
                   value={apiKey}
-                  onChange={(event) => setApiKey(event.target.value)}
+                  onChange={(event) => updateApiKey(event.target.value)}
                   placeholder="wrk-xxxxxxxx"
                   autoComplete="off"
                   spellCheck={false}
-                  aria-describedby="key-help key-error"
+                  disabled={connection === "connecting"}
+                  aria-describedby={`key-help${rememberApiKey ? " key-security-warning" : ""} key-error`}
                 />
+                <label className="remember-key-option">
+                  <input
+                    type="checkbox"
+                    checked={rememberApiKey}
+                    onChange={(event) => updateRememberApiKey(event.target.checked)}
+                    disabled={connection === "connecting"}
+                    aria-label="在此浏览器保存 API Key"
+                    aria-describedby={rememberApiKey ? "key-security-warning" : undefined}
+                  />
+                  <span>在此浏览器保存</span>
+                </label>
                 <button type="submit" disabled={connection === "connecting"}>
                   {connection === "connecting" ? "连接中…" : "进入工作台"}
                 </button>
               </div>
+              {rememberApiKey ? (
+                <p
+                  className="key-security-warning"
+                  id="key-security-warning"
+                  role="status"
+                  aria-live="polite"
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M12 3 2.8 20h18.4L12 3Zm0 5.4v5.3m0 3.1v.2" />
+                  </svg>
+                  <span>
+                    API Key 将以明文保存在浏览器中，可能被同一设备上的其他人或恶意扩展读取。仅建议在私人设备上开启。
+                  </span>
+                </p>
+              ) : null}
               <div className="key-help" id="key-help">
-                <span>密钥只保留在当前页面会话，不写入数据库或浏览器存储。</span>
+                <span>
+                  {rememberApiKey
+                    ? "密钥仅保存在这个浏览器的本地存储中，不写入项目数据库。"
+                    : "密钥只保留在当前页面会话，不写入数据库或浏览器存储。"}
+                </span>
                 <a
                   href="https://weread.qq.com/r/weread-skills"
                   target="_blank"
@@ -786,7 +885,7 @@ export function WeReadApp() {
                 </a>
               </div>
               <p className="form-error" id="key-error" role="alert" aria-live="polite">
-                {error}
+                {error || storageError}
               </p>
             </form>
           </div>

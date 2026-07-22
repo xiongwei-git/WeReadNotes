@@ -34,6 +34,11 @@ test("server-renders the WeRead Notes connection experience", async () => {
   assert.match(html, /<title>WeRead Notes｜微信读书笔记工作台<\/title>/i);
   assert.match(html, /让划线离开书页/);
   assert.match(html, /微信读书 API Key/);
+  assert.match(html, /aria-label="在此浏览器保存 API Key"/);
+  assert.match(html, /<span>在此浏览器保存<\/span>/);
+  assert.match(html, /type="checkbox"/);
+  assert.doesNotMatch(html, /type="checkbox"[^>]*\schecked(?:=""|\s|>)/);
+  assert.doesNotMatch(html, /仅建议在私人设备上开启/);
   assert.match(html, /密钥只保留在当前页面会话/);
   assert.doesNotMatch(html, /codex-preview|Your site is taking shape|Building your site/i);
   assert.doesNotMatch(html, /wrk-[A-Za-z0-9_-]{12,}/);
@@ -57,6 +62,15 @@ test("keeps the finished workspace UI and accessible chart interactions", async 
   assert.match(app, /笔记最多/);
   assert.match(app, /书名排序/);
   assert.match(app, /数据看板/);
+  assert.match(app, /仅建议在私人设备上开启/);
+  assert.match(app, /readSavedApiKey\(getBrowserApiKeyStorage\(\)\)/);
+  assert.match(app, /clearSavedApiKey\(getBrowserApiKeyStorage\(\)\)/);
+  assert.match(app, /connectWithApiKey\(savedApiKey, true\)/);
+  assert.match(app, /aria-busy=\{connection === "connecting"\}/);
+  assert.equal(
+    (app.match(/disabled=\{connection === "connecting"\}/g) || []).length,
+    3,
+  );
   assert.match(app, /本周/);
   assert.match(app, /本月/);
   assert.match(app, /今年/);
@@ -65,6 +79,9 @@ test("keeps the finished workspace UI and accessible chart interactions", async 
   assert.match(app, /tabIndex=\{0\}/);
   assert.match(styles, /\.data-category-row > div span[\s\S]*font-size: 14px/);
   assert.match(styles, /\.data-category-card \.data-card-heading > span[\s\S]*font-size: 13px/);
+  assert.match(styles, /\.key-row \{[\s\S]*grid-template-areas:[\s\S]*"key submit"[\s\S]*"remember \."/);
+  assert.match(styles, /\.key-row button \{[\s\S]*height: 50px/);
+  assert.match(styles, /\.connect-card \.remember-key-option[\s\S]*white-space: nowrap/);
   await assert.rejects(access(new URL("../app/_sites-preview", import.meta.url)));
   await assert.rejects(access(new URL("../public/favicon.svg", import.meta.url)));
   await access(projectRoot);

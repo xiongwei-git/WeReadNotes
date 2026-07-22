@@ -26,7 +26,7 @@ flowchart LR
     Proxy["同域只读代理 /api/weread"]
     Gateway["微信读书 Agent Gateway"]
 
-    Browser -->|"API Key 仅随当前请求传递"| Proxy
+    Browser -->|"API Key 随当前请求传递"| Proxy
     Proxy -->|"白名单接口与参数"| Gateway
     Gateway -->|"书目、笔记与统计"| Proxy
     Proxy -->|"no-store JSON"| Browser
@@ -72,9 +72,10 @@ npx tsc --noEmit
 
 ## 安全边界
 
-- API Key 只保存在当前 React 内存状态中
-- 不写入数据库、Local Storage、Session Storage、Cookie、URL 或日志
-- 刷新页面或主动断开后，内存中的 API Key 即被清除
+- API Key 默认只保存在当前 React 内存状态中，刷新页面后即被清除
+- 用户可主动选择将 API Key 以明文保存到当前浏览器的 Local Storage；仅建议在私人设备上开启
+- API Key 不写入项目数据库、Session Storage、Cookie、URL 或日志
+- 取消“在此浏览器保存”或主动断开会清除已保存的 API Key
 - 服务端代理仅允许预设的微信读书只读 API 与参数
 - 上游和页面响应使用 `Cache-Control: no-store`
 - 代理请求设置 20 秒超时，并拒绝上游 3xx 跳转
@@ -102,7 +103,8 @@ app/
 ├── globals.css              # 全局视觉与响应式样式
 └── lib/
     ├── weread-core.ts       # 数据口径、Reader ID、笔记整理
-    └── weread-sync.ts       # 手动同步协调与错误处理
+    ├── weread-sync.ts       # 手动同步协调与错误处理
+    └── weread-api-key-storage.ts # 可选的浏览器 API Key 存储
 tests/                       # 单元、渲染与同步回归测试
 worker/index.ts              # Cloudflare Worker 入口
 docs/                        # 调研文档与项目截图

@@ -213,11 +213,15 @@ a {
 
 .key-row {
   display: grid;
+  grid-template-areas:
+    "key submit"
+    "remember .";
   grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
   gap: 10px;
 }
 
-.key-row input,
+.key-row > input,
 .book-search input {
   min-width: 0;
   border: 1px solid var(--line);
@@ -226,7 +230,8 @@ a {
   transition: border-color 180ms ease, box-shadow 180ms ease;
 }
 
-.key-row input {
+.key-row > input {
+  grid-area: key;
   height: 50px;
   padding: 0 16px;
   border-radius: 11px;
@@ -234,7 +239,7 @@ a {
   font-size: 13px;
 }
 
-.key-row input:focus,
+.key-row > input:focus,
 .book-search input:focus {
   border-color: var(--green);
   box-shadow: 0 0 0 3px rgba(45, 104, 79, 0.12);
@@ -253,8 +258,74 @@ a {
 }
 
 .key-row button {
+  grid-area: submit;
+  height: 50px;
   min-width: 128px;
   padding: 0 20px;
+}
+
+.connect-card .remember-key-option {
+  display: inline-flex;
+  grid-area: remember;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  margin: 0;
+  padding: 0 2px;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.25;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+
+.remember-key-option:hover {
+  color: var(--green-deep);
+}
+
+.remember-key-option input {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  margin: 0;
+  accent-color: var(--green);
+}
+
+.remember-key-option:has(input:focus-visible) {
+  outline: 3px solid color-mix(in srgb, var(--amber) 72%, white);
+  outline-offset: 3px;
+}
+
+.remember-key-option input:focus-visible {
+  outline: none;
+}
+
+.key-security-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--amber) 38%, var(--line));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--amber) 8%, var(--card));
+  color: #74451f;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.key-security-warning svg {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  margin-top: 1px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
 }
 
 .key-row button:hover,
@@ -1856,6 +1927,7 @@ button:disabled {
 @media (max-width: 840px) {
   .connect-page {
     overflow: visible;
+    overflow-x: clip;
   }
 
   .connect-layout {
@@ -2008,11 +2080,11 @@ button:disabled {
   }
 
   .key-row {
+    grid-template-areas:
+      "key"
+      "remember"
+      "submit";
     grid-template-columns: 1fr;
-  }
-
-  .key-row button {
-    height: 48px;
   }
 
   .key-help {
