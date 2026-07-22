@@ -29,6 +29,7 @@
 - 增加宝塔面板源代码构建与 Node 部署教程，采用 `127.0.0.1:3100` 的 vinext 服务、宝塔 PM2 守护和 Nginx HTTPS 反向代理；明确不能按纯静态站部署。
 - 增加 `scripts/baota-update.sh` 更新脚本：校验 Node LTS、分支和干净工作区，只允许 fast-forward 拉取，随后执行锁定依赖安装与生产构建；成功后由用户在宝塔面板手动重启并验收。
 - 补齐网站分享元数据：canonical、robots、Open Graph、Twitter Card、favicon 和 Apple Touch Icon；新增 512×512 高对比书页分享封面，供微信分享卡片抓取。
+- 接入微信公众号 JS-SDK 分享：发布域名验证文件，服务端按同源页面生成 SHA-1 签名并缓存 `access_token/jsapi_ticket`，微信内调用 `updateAppMessageShareData` 和 `updateTimelineShareData`；公众号 AppID 可公开，AppSecret 仅通过服务器运行时环境读取。
 
 ## 关键决定
 
@@ -37,10 +38,11 @@
 - 不使用 D1、R2 或账号体系；后续若需要跨设备持久化，必须先重新评估 API Key 与用户数据的存储模型。
 - 不在前端直连官方网关，因为实际预检响应不允许第三方 Origin。
 - 官方 `/shelf/sync` 是读取书架的接口，不是触发缓存同步；当前无缓存架构下的“同步”直接重新请求现用数据接口。
+- 微信分享签名接口只接受 `https://wereadnotes.tedxiong.com` 同源 URL，拒绝跨域签名；不向客户端或错误响应暴露 AppSecret、access token、jsapi ticket 或微信上游错误详情。
 
 ## 验证状态
 
-- `npm test`：33 项通过（含完整生产构建、宝塔更新保护、分享元数据与品牌资源、API Key 可选存储、书库排序、周期标签、Reader ID 转换、同步流程与最小字号回归测试）。
+- `npm test`：39 项通过（含完整生产构建、宝塔更新保护、微信 JS-SDK 签名与同源限制、分享元数据与品牌资源、API Key 可选存储、书库排序、周期标签、Reader ID 转换、同步流程与最小字号回归测试）。
 - `npm run lint`：通过。
 - `npx tsc --noEmit`：通过。
 - `npm audit --omit=dev`：0 个生产依赖漏洞。
@@ -51,6 +53,7 @@
 
 - 在浏览器中完成一次端到端交互确认后，决定是否发布 Sites 预览版本。
 - 如需跨设备同步，先评审 API Key 加密、数据保留和删除策略；当前不引入数据库。
+- 宝塔部署后仍需在公众号后台配置 JS 接口安全域名和服务器出口 IP 白名单，并通过宝塔本地环境文件设置 `WECHAT_APP_SECRET`，再完成一次微信真机分享验收。
 
 ## 主要文件
 
@@ -62,3 +65,5 @@
 - `scripts/baota-update.sh`、`tests/baota-update.test.mjs`：宝塔安全更新脚本及成功、脏工作区、Node 版本和构建失败回归测试。
 - `tests/weread-core.test.ts`、`tests/rendered-html.test.mjs`：自动化验证。
 - `public/favicon.svg`、`public/share-cover.svg`、`public/share-cover.png`：站点图标与社交分享封面资源。
+- `app/api/wechat/jssdk/route.ts`、`app/lib/wechat-jssdk.ts`、`app/components/WeChatShareSetup.tsx`：微信分享签名、缓存、同源校验和客户端 JS-SDK 配置。
+- `public/MP_verify_GFIDeZ0v0AsWIl2j.txt`：微信公众号 JS 接口安全域名验证文件。

@@ -96,6 +96,71 @@ test("publishes complete social sharing metadata and brand assets", async () => 
   );
 });
 
+test("ships the WeChat domain verification and JS-SDK setup", async () => {
+  const [verification, layout, shareSetup, route, environmentExample] =
+    await Promise.all([
+      readFile(
+        new URL(
+          "../public/MP_verify_GFIDeZ0v0AsWIl2j.txt",
+          import.meta.url,
+        ),
+        "utf8",
+      ),
+      readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
+      readFile(
+        new URL("../app/components/WeChatShareSetup.tsx", import.meta.url),
+        "utf8",
+      ),
+      readFile(
+        new URL("../app/api/wechat/jssdk/route.ts", import.meta.url),
+        "utf8",
+      ),
+      readFile(new URL("../.env.example", import.meta.url), "utf8"),
+    ]);
+
+  assert.equal(verification.trim(), "GFIDeZ0v0AsWIl2j");
+  assert.match(layout, /<WeChatShareSetup \/>/);
+  assert.match(shareSetup, /updateAppMessageShareData/);
+  assert.match(shareSetup, /updateTimelineShareData/);
+  assert.match(route, /WECHAT_APP_SECRET/);
+  assert.match(route, /Cache-Control["']:\s*["']no-store/);
+  assert.match(environmentExample, /^WECHAT_APP_SECRET=$/m);
+  assert.doesNotMatch(
+    `${layout}\n${shareSetup}\n${route}\n${environmentExample}`,
+    /WECHAT_APP_SECRET\s*=\s*["'][A-Za-z0-9]{16,}/,
+  );
+});
+
+test("keeps the WeChat signature endpoint same-origin and secret-gated", async () => {
+  const previousSecret = process.env.WECHAT_APP_SECRET;
+  delete process.env.WECHAT_APP_SECRET;
+
+  try {
+    const offsiteResponse = await render(
+      "/api/wechat/jssdk?url=https%3A%2F%2Fevil.example%2F",
+    );
+    assert.equal(offsiteResponse.status, 400);
+    assert.equal(offsiteResponse.headers.get("cache-control"), "no-store, max-age=0");
+    assert.deepEqual(await offsiteResponse.json(), {
+      error: { code: "INVALID_URL", message: "分享页面地址无效" },
+    });
+
+    const unconfiguredResponse = await render(
+      "/api/wechat/jssdk?url=https%3A%2F%2Fwereadnotes.tedxiong.com%2F",
+    );
+    assert.equal(unconfiguredResponse.status, 503);
+    assert.deepEqual(await unconfiguredResponse.json(), {
+      error: { code: "NOT_CONFIGURED", message: "微信分享暂未配置" },
+    });
+  } finally {
+    if (previousSecret === undefined) {
+      delete process.env.WECHAT_APP_SECRET;
+    } else {
+      process.env.WECHAT_APP_SECRET = previousSecret;
+    }
+  }
+});
+
 test("keeps the finished workspace UI and accessible chart interactions", async () => {
   const [packageJson, page, layout, app, styles] = await Promise.all([
     readFile(new URL("../package.json", import.meta.url), "utf8"),

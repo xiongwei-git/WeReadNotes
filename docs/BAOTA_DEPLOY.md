@@ -22,9 +22,8 @@
   │ http://127.0.0.1:3100
   ▼
 WeRead Notes / vinext（宝塔 PM2 守护）
-  │ HTTPS :443 出站
-  ▼
-i.weread.qq.com
+  ├── HTTPS :443 出站 → i.weread.qq.com
+  └── HTTPS :443 出站 → api.weixin.qq.com（微信分享签名）
 ```
 
 宝塔负责运行和守护 Node 服务，Nginx 负责域名、HTTPS 和反向代理。项目不需要 MySQL，也不需要在服务器环境变量中配置微信读书 API Key。
@@ -169,6 +168,14 @@ npm run start -- --hostname 127.0.0.1 --port 3100
 
 两种方式任选一种，不要同时配置。
 
+启用后文的微信公众号 JS-SDK 分享卡片后，需要让 Node 在运行时读取本地密钥文件。此时改用“自定义启动命令”：
+
+```bash
+node --env-file=.env.production.local node_modules/vinext/dist/cli.js start -H 127.0.0.1 -p 3100
+```
+
+`.env.production.local` 已被 Git 忽略，不会被更新脚本覆盖或提交到仓库。
+
 提交后在 Node 项目列表确认状态为`运行中`，然后再次执行：
 
 ```bash
@@ -229,10 +236,81 @@ location / {
 - 公网只开放 `80` 和 `443`；不要在云服务器安全组或宝塔防火墙中开放 `3100`。
 - Node 服务绑定 `127.0.0.1`，只能由本机 Nginx 访问。
 - 服务器需要允许出站访问 `i.weread.qq.com:443`。
+- 启用微信分享卡片时，还需要允许出站访问 `api.weixin.qq.com:443` 和 `res.wx.qq.com:443`。
 - 不要把微信读书 API Key 写入项目源码、宝塔环境变量或 Nginx 配置。
 - 用户应当只在 HTTPS 页面输入 API Key。
 
-## 九、上线验收
+## 九、配置微信公众号 JS-SDK 分享卡片
+
+项目已内置公众号 `AppID`：`wx1a90de06643413f0`。`AppID` 是公开标识；`AppSecret` 是服务端密钥，绝不能写进源码、Git、Nginx、聊天记录或前端环境变量。
+
+### 1. 部署域名验证文件
+
+完成代码更新和构建后，确认微信要求的验证文件可访问：
+
+```bash
+curl -fsS https://wereadnotes.tedxiong.com/MP_verify_GFIDeZ0v0AsWIl2j.txt
+```
+
+预期只输出：
+
+```text
+GFIDeZ0v0AsWIl2j
+```
+
+然后在微信公众平台的“设置与开发 → 公众号设置 → 功能设置”中，把下面的域名配置为“JS接口安全域名”，不填写协议或路径：
+
+```text
+wereadnotes.tedxiong.com
+```
+
+### 2. 配置服务器 IP 白名单
+
+在公众号“开发接口管理 / 基本配置”的 IP 白名单中，加入这台阿里云服务器对外访问互联网时使用的固定公网 IPv4。应以阿里云控制台显示的 EIP/公网 IP 为准；不要填写 `127.0.0.1`、内网 IP 或域名。
+
+微信的 `access_token` 接口会校验来源 IP。白名单遗漏时，站点本身仍可打开，但签名接口会返回 `502`，微信分享配置不会生效。
+
+### 3. 在服务器保存 AppSecret
+
+在宝塔终端执行以下命令。输入时不会回显 AppSecret，也不会把它写进 Shell 历史：
+
+```bash
+cd /www/wwwroot/WeReadNotes
+umask 077
+read -rsp '请输入公众号 AppSecret：' WECHAT_SECRET
+printf '\n'
+printf 'WECHAT_APP_SECRET=%s\n' "$WECHAT_SECRET" > .env.production.local
+unset WECHAT_SECRET
+chown www:www .env.production.local
+chmod 600 .env.production.local
+```
+
+不要把 `.env.production.local` 内容发到聊天、Issue 或日志中。
+
+### 4. 修改启动命令并验证
+
+在宝塔 Node 项目中把启动方式改为“自定义启动命令”：
+
+```bash
+node --env-file=.env.production.local node_modules/vinext/dist/cli.js start -H 127.0.0.1 -p 3100
+```
+
+保存并重启项目，然后验证签名接口：
+
+```bash
+curl -i 'http://127.0.0.1:3100/api/wechat/jssdk?url=https%3A%2F%2Fwereadnotes.tedxiong.com%2F'
+```
+
+预期为 `HTTP/1.1 200 OK`，JSON 中包含 `appId`、`timestamp`、`nonceStr` 和 `signature`，但绝不会包含 `AppSecret`、`access_token` 或 `jsapi_ticket`。
+
+如果返回：
+
+- `503 NOT_CONFIGURED`：Node 没有读取到 `.env.production.local`，检查启动命令、文件权限并重启。
+- `502 WECHAT_UPSTREAM_ERROR`：优先核对 AppSecret、公众号 AppID、服务器公网 IP 白名单和 `api.weixin.qq.com:443` 出站网络。
+
+签名接口返回 `200` 后，在微信内置浏览器打开首页，通过右上角“转发给朋友”测试卡片。不要用复制粘贴 URL 的方式判断 JS-SDK 是否生效。
+
+## 十、上线验收
 
 依次完成以下检查：
 
@@ -268,7 +346,7 @@ location / {
 
 完成以上检查后才算部署完成。
 
-## 十、以后更新版本
+## 十一、以后更新版本
 
 代码推送到 GitHub 后，在宝塔终端执行仓库自带的更新脚本：
 
@@ -306,7 +384,7 @@ npm run build
 
 如果 `git status` 显示服务器上存在未提交修改，先停止更新并确认这些修改的来源，不要直接覆盖。
 
-## 十一、回滚到上一个版本
+## 十二、回滚到上一个版本
 
 先查看最近提交：
 
@@ -334,7 +412,7 @@ npm run build
 
 然后再次重启 Node 项目。
 
-## 十二、常见问题
+## 十三、常见问题
 
 ### 页面返回 502
 

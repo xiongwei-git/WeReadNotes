@@ -17,6 +17,7 @@
 - 提供阅读节奏、分类偏好、24 小时阅读分布与 Top 书籍看板
 - 一键跳转到正确的微信读书 Web 阅读器页面
 - 复制或下载结构化 Markdown 笔记
+- 支持通过微信公众号 JS-SDK 定制微信内分享卡片
 - 支持桌面端与移动端，图表支持鼠标悬浮和键盘聚焦
 
 ## 工作方式
@@ -80,6 +81,7 @@ npx tsc --noEmit
 - 服务端代理仅允许预设的微信读书只读 API 与参数
 - 上游和页面响应使用 `Cache-Control: no-store`
 - 代理请求设置 20 秒超时，并拒绝上游 3xx 跳转
+- 微信公众号 `AppSecret` 仅由服务端运行时环境读取，不进入客户端、响应、日志或仓库
 
 请勿把 API Key 写入源码、环境示例、Issue、截图或提交历史。
 
@@ -101,7 +103,9 @@ npx tsc --noEmit
 app/
 ├── WeReadApp.tsx            # 工作台界面与数据加载流程
 ├── components/WeReadMark.tsx # 品牌图标
+├── components/WeChatShareSetup.tsx # 微信内 JS-SDK 分享配置
 ├── api/weread/route.ts      # 微信读书同域只读代理
+├── api/wechat/jssdk/route.ts # 微信公众号 JS-SDK 同源签名
 ├── globals.css              # 全局视觉与响应式样式
 └── lib/
     ├── weread-core.ts       # 数据口径、Reader ID、笔记整理
@@ -117,7 +121,7 @@ scripts/baota-update.sh      # 宝塔安全更新与生产构建脚本
 
 执行 `npm run build` 会生成 `dist/` 产物，当前项目可通过 `npm run start` 启动 vinext Node 服务，也保留了 Cloudflare Worker 构建配置。项目本身不需要配置微信读书 API Key 环境变量，因为 Key 由用户在浏览器中提供。
 
-使用宝塔面板在 Linux 服务器上安装依赖、构建，并通过 PM2 与 Nginx 运行时，请参考[宝塔面板构建与部署教程](docs/BAOTA_DEPLOY.md)。
+使用宝塔面板在 Linux 服务器上安装依赖、构建，并通过 PM2 与 Nginx 运行时，请参考[宝塔面板构建与部署教程](docs/BAOTA_DEPLOY.md)。微信分享卡片还需要配置公众号 JS 接口安全域名、服务器 IP 白名单和仅保存在服务器的 `WECHAT_APP_SECRET`。
 
 已部署的宝塔服务器可以运行以下脚本完成后续更新与构建；脚本成功后，再到宝塔 Node 项目中重启服务：
 
@@ -131,6 +135,7 @@ bash scripts/baota-update.sh
 - 不保存历史同步快照，数据以微信读书接口当前返回为准
 - “同步数据”表示重新请求官方数据，并非触发微信读书服务端缓存刷新
 - 微信读书 Agent API 或 Web Reader ID 规则发生变化时，项目可能需要同步更新
+- 微信分享卡片依赖公众号 JS-SDK 权限、JS 接口安全域名、服务器 IP 白名单和有效 AppSecret
 
 ## 相关资料
 

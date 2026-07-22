@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { WeChatShareSetup } from "./components/WeChatShareSetup";
 import "./globals.css";
 
 const siteUrl = "https://wereadnotes.tedxiong.com";
@@ -58,7 +59,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-CN">
-      <body>{children}</body>
+      <body>
+        <WeChatShareSetup />
+        {children}
+      </body>
     </html>
   );
 }
