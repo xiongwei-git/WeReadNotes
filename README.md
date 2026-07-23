@@ -1,24 +1,31 @@
 # WeRead Notes
 
-基于微信读书官方 Agent API 的个人阅读笔记工作台。连接你的微信读书数据，在一个 Web 页面里完成书目检索、阅读统计、笔记回顾与 Markdown 导出。
+基于微信读书官方 Agent API 的个人阅读笔记工作台。连接你的微信读书数据，在一个 Web 页面里完成完整书架检索、阅读统计、笔记回顾与 Markdown 导出。
+
+**在线体验：[https://wereadnotes.tedxiong.com](https://wereadnotes.tedxiong.com)**
 
 > 本项目不会修改或重新打包官方 Skill，而是使用相同的只读官方网关获取用户授权的数据。
 
-![WeRead Notes 连接页与产品预览](docs/images/weread-notes-connect.png)
+## 产品演示
+
+[![WeRead Notes 产品演示：桌面数据看板与移动端笔记页面](docs/images/weread-notes-video-cover.jpg)](docs/media/weread-notes-promo-v3-29s.mp4)
+
+**[▶ 点击观看 28.8 秒产品演示](docs/media/weread-notes-promo-v3-29s.mp4)**
+
+演示完整路径：连接 API Key → 阅读总览 → 筛选并选择有笔记的书 → 按章节回看 → 复制 Markdown → 导出 `.md` → 数据看板 → 移动端。
 
 ## 功能
 
-- 使用微信读书 API Key 连接个人阅读数据
-- 手动同步书目、阅读统计和当前书籍笔记
-- 展示完整书架，并可切换全部书架、有笔记、电子书和有声书范围
-- 按书名或作者搜索，并支持最近阅读、笔记最多、书名排序
-- 将划线和个人想法合并后按章节组织
-- 展示本周、本月、今年和全部历史的阅读数据
-- 提供阅读节奏、分类偏好、24 小时阅读分布与 Top 书籍看板
-- 一键跳转到正确的微信读书 Web 阅读器页面
-- 复制或下载结构化 Markdown 笔记
-- 支持通过微信公众号 JS-SDK 定制微信内分享卡片
+- 使用微信读书官方 API Key 连接；默认仅保存在当前页面内存，也可由用户主动选择保存在当前浏览器
+- 合并笔记本与书架数据，完整展示电子书、有声书和文章收藏入口
+- 按全部书架、有笔记、电子书和有声书筛选，并支持书名/作者搜索、最近阅读、笔记最多和书名排序
+- 手动同步书目、当前统计周期和已打开书籍的笔记；部分接口失败时保留已有数据
+- 将划线与个人想法合并后按章节组织，并可跳转到正确的微信读书 Web 阅读器页面
+- 一键复制结构化 Markdown，或直接下载 `.md` 笔记文件
+- 按本周、本月、今年和全部历史查看阅读时长、阅读书目与笔记总数
+- 提供阅读节奏、分类偏好、24 小时阅读分布和 Top 书籍看板
 - 支持桌面端与移动端，图表支持鼠标悬浮和键盘聚焦
+- 支持通过微信公众号 JS-SDK 定制微信内分享卡片，并提供可按需启用的分享诊断
 
 ## 工作方式
 
@@ -114,10 +121,14 @@ app/
 tests/                       # 单元、渲染与同步回归测试
 worker/index.ts              # Cloudflare Worker 入口
 docs/                        # 调研文档与项目截图
+├── images/                  # README 截图与视频封面
+└── media/                   # 产品介绍视频
 scripts/baota-update.sh      # 宝塔安全更新与生产构建脚本
 ```
 
 ## 部署
+
+当前生产环境：[https://wereadnotes.tedxiong.com](https://wereadnotes.tedxiong.com)
 
 执行 `npm run build` 会生成 `dist/` 产物，当前项目可通过 `npm run start` 启动 vinext Node 服务，也保留了 Cloudflare Worker 构建配置。项目本身不需要配置微信读书 API Key 环境变量，因为 Key 由用户在浏览器中提供。
 
