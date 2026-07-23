@@ -126,6 +126,8 @@ a {
 }
 
 .connect-page {
+  display: flex;
+  flex-direction: column;
   min-height: 100dvh;
   overflow: hidden;
   background:
@@ -138,6 +140,7 @@ a {
   align-items: center;
   justify-content: space-between;
   min-height: 76px;
+  width: 100%;
   max-width: 1440px;
   margin: 0 auto;
   padding: 0 54px;
@@ -152,9 +155,11 @@ a {
 
 .connect-layout {
   display: grid;
+  width: 100%;
+  flex: 1;
   grid-template-columns: minmax(0, 1fr) minmax(480px, 0.92fr);
   max-width: 1440px;
-  min-height: calc(100dvh - 76px);
+  min-height: calc(100dvh - 126px);
   margin: 0 auto;
 }
 
@@ -529,6 +534,198 @@ button:disabled {
   font-style: italic;
 }
 
+.developer-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  min-height: 50px;
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 0 54px;
+  border-top: 1px solid rgba(24, 35, 31, 0.12);
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.developer-footer-links {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.developer-footer a,
+.developer-footer button {
+  padding: 5px 0;
+  border: 0;
+  background: transparent;
+  color: var(--green-deep);
+  font-size: 12px;
+  font-weight: 750;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.developer-footer a:hover,
+.developer-footer button:hover {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.developer-dialog {
+  width: min(680px, calc(100vw - 36px));
+  max-width: none;
+  padding: 0;
+  overflow: visible;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: 0 30px 90px rgba(18, 32, 25, 0.25);
+}
+
+.developer-dialog::backdrop {
+  background: rgba(24, 35, 31, 0.52);
+  backdrop-filter: blur(5px);
+}
+
+.developer-dialog-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 210px;
+  gap: 30px;
+  padding: 34px;
+}
+
+.developer-dialog-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: rgba(255, 253, 248, 0.92);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.developer-dialog-close:hover {
+  border-color: rgba(45, 104, 79, 0.34);
+  color: var(--green-deep);
+}
+
+.developer-dialog-close svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-width: 1.8;
+}
+
+.developer-dialog-copy {
+  min-width: 0;
+}
+
+.developer-dialog-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding-right: 28px;
+}
+
+.developer-dialog-brand h2 {
+  margin: 5px 0 0;
+  font-family: var(--serif);
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+
+.developer-dialog-copy > p {
+  margin: 24px 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.8;
+  text-wrap: pretty;
+}
+
+.developer-profile-links {
+  display: grid;
+  gap: 8px;
+}
+
+.developer-profile-links a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 43px;
+  padding: 0 13px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--ink);
+  font-size: 13px;
+  text-decoration: none;
+  transition: border-color 160ms ease, background 160ms ease;
+}
+
+.developer-profile-links a:hover {
+  border-color: rgba(45, 104, 79, 0.34);
+  background: var(--green-soft);
+}
+
+.developer-profile-links span {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.developer-profile-links strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.developer-qr-card {
+  align-self: center;
+  margin: 0;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: white;
+  box-shadow: 0 12px 30px rgba(30, 44, 37, 0.08);
+}
+
+.developer-qr-card img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+}
+
+.developer-qr-card figcaption {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 4px 3px;
+  text-align: center;
+}
+
+.developer-qr-card strong {
+  font-size: 13px;
+}
+
+.developer-qr-card span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
 /* Connected workspace */
 .workspace-page {
   height: 100dvh;
@@ -589,6 +786,21 @@ button:disabled {
   justify-content: flex-end;
   gap: 12px;
   font-size: 12px;
+}
+
+.workspace-account .about-button {
+  min-height: 34px;
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.workspace-account .about-button:hover {
+  color: var(--green-deep);
 }
 
 .workspace-account .connection-badge {
@@ -1983,6 +2195,10 @@ button:disabled {
     padding-inline: 36px;
   }
 
+  .developer-footer {
+    padding-inline: 36px;
+  }
+
   .metric-grid {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -2015,6 +2231,7 @@ button:disabled {
 
   .connect-layout {
     grid-template-columns: 1fr;
+    min-height: auto;
   }
 
   .connect-copy {
@@ -2124,6 +2341,38 @@ button:disabled {
 
   .brand-meta {
     display: none;
+  }
+
+  .developer-footer {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+    min-height: auto;
+    padding: 18px 20px 24px;
+  }
+
+  .developer-footer-links {
+    gap: 16px;
+  }
+
+  .developer-dialog {
+    max-height: calc(100dvh - 28px);
+    overflow-y: auto;
+  }
+
+  .developer-dialog-card {
+    grid-template-columns: 1fr;
+    gap: 24px;
+    padding: 26px 20px 22px;
+  }
+
+  .developer-dialog-brand {
+    padding-right: 34px;
+  }
+
+  .developer-qr-card {
+    width: min(230px, 100%);
+    justify-self: center;
   }
 
   .workspace-account {

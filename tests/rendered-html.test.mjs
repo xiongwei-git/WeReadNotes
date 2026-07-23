@@ -40,6 +40,10 @@ test("server-renders the WeRead Notes connection experience", async () => {
   assert.doesNotMatch(html, /type="checkbox"[^>]*\schecked(?:=""|\s|>)/);
   assert.doesNotMatch(html, /仅建议在私人设备上开启/);
   assert.match(html, /密钥只保留在当前页面会话/);
+  assert.match(html, /WeRead Notes 由 Ted 独立开发/);
+  assert.match(html, /https:\/\/github\.com\/xiongwei-git/);
+  assert.match(html, /https:\/\/x\.com\/tedxiongwei/);
+  assert.match(html, /developer-wechat-qr\.png/);
   assert.doesNotMatch(html, /codex-preview|Your site is taking shape|Building your site/i);
   assert.doesNotMatch(html, /wrk-[A-Za-z0-9_-]{12,}/);
 });
@@ -216,6 +220,8 @@ test("keeps the finished workspace UI and accessible chart interactions", async 
   assert.match(app, /文章收藏/);
   assert.match(app, /数据看板/);
   assert.match(app, /<WeReadMark \/>/);
+  assert.match(app, /DeveloperAboutDialog/);
+  assert.match(app, />\s*关于\s*</);
   assert.match(app, /仅建议在私人设备上开启/);
   assert.match(app, /readSavedApiKey\(getBrowserApiKeyStorage\(\)\)/);
   assert.match(app, /clearSavedApiKey\(getBrowserApiKeyStorage\(\)\)/);
@@ -243,6 +249,7 @@ test("keeps the finished workspace UI and accessible chart interactions", async 
   await access(new URL("../public/favicon.svg", import.meta.url));
   await access(new URL("../public/share-cover.png", import.meta.url));
   await access(projectRoot);
+  await access(new URL("../public/developer-wechat-qr.png", import.meta.url));
 });
 
 test("keeps all visible pixel-based typography at 12px or larger", async () => {

@@ -2,6 +2,10 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
+import {
+  DeveloperAboutDialog,
+  DeveloperCredit,
+} from "./components/DeveloperAbout";
 import { WeReadMark } from "./components/WeReadMark";
 import {
   buildBookMarkdown,
@@ -581,6 +585,7 @@ export function WeReadApp() {
   const [statsMode, setStatsMode] = useState<ReadStatsMode>("monthly");
   const [statsLoading, setStatsLoading] = useState(false);
   const [statsError, setStatsError] = useState("");
+  const [aboutOpen, setAboutOpen] = useState(false);
 
   const connectWithApiKey = useCallback(
     async (key: string, shouldRemember: boolean) => {
@@ -1062,6 +1067,11 @@ export function WeReadApp() {
             <p className="preview-caption">不是收藏更多，而是回来得更频繁。</p>
           </div>
         </section>
+        <DeveloperCredit onWechat={() => setAboutOpen(true)} />
+        <DeveloperAboutDialog
+          open={aboutOpen}
+          onClose={() => setAboutOpen(false)}
+        />
       </main>
     );
   }
@@ -1101,6 +1111,13 @@ export function WeReadApp() {
           </button>
         </nav>
         <div className="workspace-account">
+          <button
+            className="about-button"
+            type="button"
+            onClick={() => setAboutOpen(true)}
+          >
+            关于
+          </button>
           <div className="sync-control">
             <button
               className={`sync-button ${syncState === "syncing" ? "syncing" : ""}`}
@@ -1491,6 +1508,10 @@ export function WeReadApp() {
           )}
         </section>
       </div>
+      <DeveloperAboutDialog
+        open={aboutOpen}
+        onClose={() => setAboutOpen(false)}
+      />
     </main>
   );
 }
