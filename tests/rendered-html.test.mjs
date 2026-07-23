@@ -97,11 +97,18 @@ test("publishes complete social sharing metadata and brand assets", async () => 
 });
 
 test("ships the WeChat domain verification and JS-SDK setup", async () => {
-  const [verification, layout, shareSetup, route, environmentExample, styles] =
-    await Promise.all([
+  const [
+    verification,
+    layout,
+    shareSetup,
+    route,
+    jssdk,
+    environmentExample,
+    styles,
+  ] = await Promise.all([
       readFile(
         new URL(
-          "../public/MP_verify_GFIDeZ0v0AsWIl2j.txt",
+          "../public/MP_verify_AlUm3Z2EKx03wrrt.txt",
           import.meta.url,
         ),
         "utf8",
@@ -115,11 +122,12 @@ test("ships the WeChat domain verification and JS-SDK setup", async () => {
         new URL("../app/api/wechat/jssdk/route.ts", import.meta.url),
         "utf8",
       ),
+      readFile(new URL("../app/lib/wechat-jssdk.ts", import.meta.url), "utf8"),
       readFile(new URL("../.env.example", import.meta.url), "utf8"),
       readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
     ]);
 
-  assert.equal(verification.trim(), "GFIDeZ0v0AsWIl2j");
+  assert.equal(verification.trim(), "AlUm3Z2EKx03wrrt");
   assert.match(layout, /<WeChatShareSetup \/>/);
   assert.match(shareSetup, /updateAppMessageShareData/);
   assert.match(shareSetup, /updateTimelineShareData/);
@@ -128,17 +136,26 @@ test("ships the WeChat domain verification and JS-SDK setup", async () => {
   assert.match(shareSetup, /role="status"/);
   assert.match(shareSetup, /aria-live="polite"/);
   assert.match(styles, /\.wechat-debug-panel/);
-  assert.match(route, /WECHAT_APP_SECRET/);
+  assert.match(jssdk, /WECHAT_APP_ID/);
+  assert.match(jssdk, /WECHAT_APP_SECRET/);
+  assert.match(route, /resolveWeChatAccountConfig\(process\.env\)/);
   assert.match(route, /Cache-Control["']:\s*["']no-store/);
+  assert.match(environmentExample, /^WECHAT_APP_ID=$/m);
   assert.match(environmentExample, /^WECHAT_APP_SECRET=$/m);
   assert.doesNotMatch(
-    `${layout}\n${shareSetup}\n${route}\n${environmentExample}`,
+    `${layout}\n${shareSetup}\n${route}\n${jssdk}\n${environmentExample}`,
     /WECHAT_APP_SECRET\s*=\s*["'][A-Za-z0-9]{16,}/,
+  );
+  assert.doesNotMatch(
+    `${shareSetup}\n${route}\n${jssdk}`,
+    /(?:const|=)\s*["']wx[a-f0-9]{16}["']/i,
   );
 });
 
 test("keeps the WeChat signature endpoint same-origin and secret-gated", async () => {
+  const previousAppId = process.env.WECHAT_APP_ID;
   const previousSecret = process.env.WECHAT_APP_SECRET;
+  delete process.env.WECHAT_APP_ID;
   delete process.env.WECHAT_APP_SECRET;
 
   try {
@@ -159,6 +176,11 @@ test("keeps the WeChat signature endpoint same-origin and secret-gated", async (
       error: { code: "NOT_CONFIGURED", message: "微信分享暂未配置" },
     });
   } finally {
+    if (previousAppId === undefined) {
+      delete process.env.WECHAT_APP_ID;
+    } else {
+      process.env.WECHAT_APP_ID = previousAppId;
+    }
     if (previousSecret === undefined) {
       delete process.env.WECHAT_APP_SECRET;
     } else {

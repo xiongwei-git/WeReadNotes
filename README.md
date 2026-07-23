@@ -121,7 +121,7 @@ scripts/baota-update.sh      # 宝塔安全更新与生产构建脚本
 
 执行 `npm run build` 会生成 `dist/` 产物，当前项目可通过 `npm run start` 启动 vinext Node 服务，也保留了 Cloudflare Worker 构建配置。项目本身不需要配置微信读书 API Key 环境变量，因为 Key 由用户在浏览器中提供。
 
-使用宝塔面板在 Linux 服务器上安装依赖、构建，并通过 PM2 与 Nginx 运行时，请参考[宝塔面板构建与部署教程](docs/BAOTA_DEPLOY.md)。微信分享卡片还需要配置公众号 JS 接口安全域名、服务器 IP 白名单和仅保存在服务器的 `WECHAT_APP_SECRET`。
+使用宝塔面板在 Linux 服务器上安装依赖、构建，并通过 PM2 与 Nginx 运行时，请参考[宝塔面板构建与部署教程](docs/BAOTA_DEPLOY.md)。微信分享卡片还需要配置公众号 JS 接口安全域名、服务器 IP 白名单，以及仅通过服务器环境读取的 `WECHAT_APP_ID` 和 `WECHAT_APP_SECRET`。
 
 已部署的宝塔服务器可以运行以下脚本完成后续更新与构建；脚本成功后，再到宝塔 Node 项目中重启服务：
 

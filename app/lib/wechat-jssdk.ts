@@ -1,4 +1,3 @@
-export const WECHAT_APP_ID = "wx1a90de06643413f0";
 export const WECHAT_SHARE_ORIGIN = "https://wereadnotes.tedxiong.com";
 
 const WECHAT_API_ORIGIN = "https://api.weixin.qq.com";
@@ -24,6 +23,25 @@ export class WeChatJssdkError extends Error {
     this.name = "WeChatJssdkError";
     this.code = code;
   }
+}
+
+export function resolveWeChatAccountConfig(
+  environment: Record<string, string | undefined>,
+): {
+  appId: string;
+  appSecret: string;
+} {
+  const appId = environment.WECHAT_APP_ID?.trim() ?? "";
+  const appSecret = environment.WECHAT_APP_SECRET?.trim() ?? "";
+
+  if (
+    !/^wx[a-f0-9]{16}$/i.test(appId) ||
+    !/^[A-Za-z0-9_-]{16,128}$/.test(appSecret)
+  ) {
+    throw new WeChatJssdkError("NOT_CONFIGURED");
+  }
+
+  return { appId, appSecret };
 }
 
 export function normalizeWeChatPageUrl(rawUrl: string): string {

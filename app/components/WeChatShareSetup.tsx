@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 
-const WECHAT_APP_ID = "wx1a90de06643413f0";
 const SHARE_LINK = "https://wereadnotes.tedxiong.com/";
 const SHARE_IMAGE = "https://wereadnotes.tedxiong.com/share-cover.png";
 const SHARE_TITLE = "WeRead Notes｜微信读书笔记工作台";
@@ -139,7 +138,8 @@ function isSignatureResponse(value: unknown): value is SignatureResponse {
 
   const response = value as Record<string, unknown>;
   return (
-    response.appId === WECHAT_APP_ID &&
+    typeof response.appId === "string" &&
+    /^wx[a-f0-9]{16}$/i.test(response.appId) &&
     typeof response.timestamp === "number" &&
     Number.isInteger(response.timestamp) &&
     typeof response.nonceStr === "string" &&

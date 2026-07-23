@@ -242,21 +242,17 @@ location / {
 
 ## 九、配置微信公众号 JS-SDK 分享卡片
 
-项目已内置公众号 `AppID`：`wx1a90de06643413f0`。`AppID` 是公开标识；`AppSecret` 是服务端密钥，绝不能写进源码、Git、Nginx、聊天记录或前端环境变量。
+项目通过服务器环境变量读取公众号 `AppID` 和 `AppSecret`，不再把账号写死在代码中。`AppID` 是公开标识；`AppSecret` 是服务端密钥，绝不能写进源码、Git、Nginx、聊天记录或前端环境变量。
 
 ### 1. 部署域名验证文件
 
-完成代码更新和构建后，确认微信要求的验证文件可访问：
+每个公众号配置 JS 接口安全域名时都会生成自己的 `MP_verify_*.txt`。切换公众号后，必须用新服务号下载的文件替换 `public/` 中旧账号的验证文件，保持微信给出的文件名和内容完全不变，然后提交、部署并确认公网可访问：
 
 ```bash
-curl -fsS https://wereadnotes.tedxiong.com/MP_verify_GFIDeZ0v0AsWIl2j.txt
+curl -fsS https://wereadnotes.tedxiong.com/MP_verify_新服务号生成的文件名.txt
 ```
 
-预期只输出：
-
-```text
-GFIDeZ0v0AsWIl2j
-```
+预期只输出新验证文件中的原始字符串。
 
 然后在微信公众平台的“设置与开发 → 公众号设置 → 功能设置”中，把下面的域名配置为“JS接口安全域名”，不填写协议或路径：
 
@@ -270,17 +266,20 @@ wereadnotes.tedxiong.com
 
 微信的 `access_token` 接口会校验来源 IP。白名单遗漏时，站点本身仍可打开，但签名接口会返回 `502`，微信分享配置不会生效。
 
-### 3. 在服务器保存 AppSecret
+### 3. 在服务器保存 AppID 和 AppSecret
 
-在宝塔终端执行以下命令。输入时不会回显 AppSecret，也不会把它写进 Shell 历史：
+在宝塔终端执行以下命令。AppSecret 输入时不会回显，也不会被写进 Shell 历史：
 
 ```bash
 cd /www/wwwroot/WeReadNotes
 umask 077
-read -rsp '请输入公众号 AppSecret：' WECHAT_SECRET
+read -rp '请输入已认证服务号 AppID：' WEREAD_WECHAT_APP_ID
+read -rsp '请输入已认证服务号 AppSecret：' WEREAD_WECHAT_APP_SECRET
 printf '\n'
-printf 'WECHAT_APP_SECRET=%s\n' "$WECHAT_SECRET" > .env.production.local
-unset WECHAT_SECRET
+printf 'WECHAT_APP_ID=%s\nWECHAT_APP_SECRET=%s\n' \
+  "$WEREAD_WECHAT_APP_ID" \
+  "$WEREAD_WECHAT_APP_SECRET" > .env.production.local
+unset WEREAD_WECHAT_APP_ID WEREAD_WECHAT_APP_SECRET
 chown www:www .env.production.local
 chmod 600 .env.production.local
 ```
@@ -305,7 +304,7 @@ curl -i 'http://127.0.0.1:3100/api/wechat/jssdk?url=https%3A%2F%2Fwereadnotes.te
 
 如果返回：
 
-- `503 NOT_CONFIGURED`：Node 没有读取到 `.env.production.local`，检查启动命令、文件权限并重启。
+- `503 NOT_CONFIGURED`：`WECHAT_APP_ID` 或 `WECHAT_APP_SECRET` 缺失/格式无效，或者 Node 没有读取到 `.env.production.local`；检查启动命令、文件权限并重启。
 - `502 WECHAT_UPSTREAM_ERROR`：优先核对 AppSecret、公众号 AppID、服务器公网 IP 白名单和 `api.weixin.qq.com:443` 出站网络。
 
 签名接口返回 `200` 后，在微信内置浏览器打开首页，通过右上角“转发给朋友”测试卡片。不要用复制粘贴 URL 的方式判断 JS-SDK 是否生效。

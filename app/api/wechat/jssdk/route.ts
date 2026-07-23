@@ -1,10 +1,10 @@
 import {
-  WECHAT_APP_ID,
   WeChatJssdkError,
   createWeChatJssdkSignature,
   createWeChatNonce,
   createWeChatTicketProvider,
   normalizeWeChatPageUrl,
+  resolveWeChatAccountConfig,
 } from "../../../lib/wechat-jssdk";
 
 const responseHeaders = {
@@ -25,14 +25,9 @@ function jsonError(code: string, message: string, status: number) {
   );
 }
 
-function getAppSecret(): string | undefined {
-  const value = process.env.WECHAT_APP_SECRET?.trim();
-  return value && /^[A-Za-z0-9_-]{16,128}$/.test(value) ? value : undefined;
-}
-
-function getTicketProvider(appSecret: string): TicketProvider {
+function getTicketProvider(appId: string, appSecret: string): TicketProvider {
   ticketProvider ??= createWeChatTicketProvider({
-    appId: WECHAT_APP_ID,
+    appId,
     appSecret,
   });
   return ticketProvider;
@@ -52,13 +47,18 @@ export async function GET(request: Request) {
     return jsonError("INVALID_URL", "分享页面地址无效", 400);
   }
 
-  const appSecret = getAppSecret();
-  if (!appSecret) {
+  let accountConfig: ReturnType<typeof resolveWeChatAccountConfig>;
+  try {
+    accountConfig = resolveWeChatAccountConfig(process.env);
+  } catch {
     return jsonError("NOT_CONFIGURED", "微信分享暂未配置", 503);
   }
 
   try {
-    const ticket = await getTicketProvider(appSecret).getTicket();
+    const ticket = await getTicketProvider(
+      accountConfig.appId,
+      accountConfig.appSecret,
+    ).getTicket();
     const nonceStr = createWeChatNonce();
     const timestamp = Math.floor(Date.now() / 1_000);
     const signature = await createWeChatJssdkSignature({
@@ -69,7 +69,7 @@ export async function GET(request: Request) {
     });
 
     return Response.json(
-      { appId: WECHAT_APP_ID, timestamp, nonceStr, signature },
+      { appId: accountConfig.appId, timestamp, nonceStr, signature },
       { headers: responseHeaders },
     );
   } catch {

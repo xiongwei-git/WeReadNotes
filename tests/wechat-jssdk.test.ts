@@ -2,16 +2,15 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  WECHAT_APP_ID,
   WECHAT_SHARE_ORIGIN,
   WeChatJssdkError,
   createWeChatJssdkSignature,
   createWeChatTicketProvider,
   normalizeWeChatPageUrl,
+  resolveWeChatAccountConfig,
 } from "../app/lib/wechat-jssdk.ts";
 
 test("accepts only same-origin HTTPS pages for WeChat signatures", () => {
-  assert.equal(WECHAT_APP_ID, "wx1a90de06643413f0");
   assert.equal(WECHAT_SHARE_ORIGIN, "https://wereadnotes.tedxiong.com");
   assert.equal(
     normalizeWeChatPageUrl(
@@ -33,6 +32,35 @@ test("accepts only same-origin HTTPS pages for WeChat signatures", () => {
       (error) =>
         error instanceof WeChatJssdkError && error.code === "INVALID_URL",
       url,
+    );
+  }
+});
+
+test("loads the WeChat account from server-only environment variables", () => {
+  assert.deepEqual(
+    resolveWeChatAccountConfig({
+      WECHAT_APP_ID: " wx1234567890abcdef ",
+      WECHAT_APP_SECRET: " test-secret-value ",
+    }),
+    {
+      appId: "wx1234567890abcdef",
+      appSecret: "test-secret-value",
+    },
+  );
+
+  for (const environment of [
+    {},
+    { WECHAT_APP_ID: "wx1234567890abcdef" },
+    { WECHAT_APP_SECRET: "test-secret-value" },
+    {
+      WECHAT_APP_ID: "not-an-app-id",
+      WECHAT_APP_SECRET: "test-secret-value",
+    },
+  ]) {
+    assert.throws(
+      () => resolveWeChatAccountConfig(environment),
+      (error) =>
+        error instanceof WeChatJssdkError && error.code === "NOT_CONFIGURED",
     );
   }
 });

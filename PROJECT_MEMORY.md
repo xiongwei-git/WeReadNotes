@@ -31,6 +31,7 @@
 - 补齐网站分享元数据：canonical、robots、Open Graph、Twitter Card、favicon 和 Apple Touch Icon；新增 512×512 高对比书页分享封面，供微信分享卡片抓取。
 - 接入微信公众号 JS-SDK 分享：发布域名验证文件，服务端按同源页面生成 SHA-1 签名并缓存 `access_token/jsapi_ticket`，微信内调用 `updateAppMessageShareData` 和 `updateTimelineShareData`；公众号 AppID 可公开，AppSecret 仅通过服务器运行时环境读取。
 - 增加仅由 `?wechatDebug=1` 启用的微信分享诊断面板：展示微信环境、SDK 加载、页面签名、权限配置和分享接口五个阶段，并在 Android 微信中开启 JS-SDK 原生调试提示；诊断信息不包含 AppSecret、Token、ticket 或签名。
+- 微信分享诊断确认旧个人未认证公众号在 `wx.ready` 后返回 `updateAppMessageShareData:permission denied`；代码已改为从服务器环境同时读取 `WECHAT_APP_ID` 和 `WECHAT_APP_SECRET`，方便切换至已认证服务号且不再硬编码账号。
 
 ## 关键决定
 
@@ -43,7 +44,7 @@
 
 ## 验证状态
 
-- `npm test`：39 项通过（含完整生产构建、宝塔更新保护、微信 JS-SDK 签名与同源限制、分享元数据与品牌资源、API Key 可选存储、书库排序、周期标签、Reader ID 转换、同步流程与最小字号回归测试）。
+- `npm test`：40 项通过（含完整生产构建、宝塔更新保护、微信账号环境配置、JS-SDK 签名与同源限制、分享元数据与品牌资源、API Key 可选存储、书库排序、周期标签、Reader ID 转换、同步流程与最小字号回归测试）。
 - `npm run lint`：通过。
 - `npx tsc --noEmit`：通过。
 - `npm audit --omit=dev`：0 个生产依赖漏洞。
@@ -54,7 +55,7 @@
 
 - 在浏览器中完成一次端到端交互确认后，决定是否发布 Sites 预览版本。
 - 如需跨设备同步，先评审 API Key 加密、数据保留和删除策略；当前不引入数据库。
-- 微信公众号后台的 JS 接口安全域名、服务器出口 IP 白名单及宝塔 `WECHAT_APP_SECRET` 已配置，签名接口已验证；Android 微信分享仍为裸链接，待部署诊断版本后根据真机五阶段结果继续定位。
+- 新认证服务号的验证文件已替换；待在新服务号配置 JS 接口安全域名和服务器出口 IP 白名单，并在宝塔 `.env.production.local` 中填写新 `WECHAT_APP_ID` / `WECHAT_APP_SECRET` 后真机复验。
 
 ## 主要文件
 
@@ -67,4 +68,4 @@
 - `tests/weread-core.test.ts`、`tests/rendered-html.test.mjs`：自动化验证。
 - `public/favicon.svg`、`public/share-cover.svg`、`public/share-cover.png`：站点图标与社交分享封面资源。
 - `app/api/wechat/jssdk/route.ts`、`app/lib/wechat-jssdk.ts`、`app/components/WeChatShareSetup.tsx`：微信分享签名、缓存、同源校验和客户端 JS-SDK 配置。
-- `public/MP_verify_GFIDeZ0v0AsWIl2j.txt`：微信公众号 JS 接口安全域名验证文件。
+- `public/MP_verify_AlUm3Z2EKx03wrrt.txt`：新认证服务号的 JS 接口安全域名验证文件。
