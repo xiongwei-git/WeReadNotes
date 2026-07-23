@@ -131,6 +131,9 @@ test("ships the WeChat domain verification and JS-SDK setup", async () => {
   assert.match(layout, /<WeChatShareSetup \/>/);
   assert.match(shareSetup, /updateAppMessageShareData/);
   assert.match(shareSetup, /updateTimelineShareData/);
+  assert.match(shareSetup, /onMenuShareAppMessage/);
+  assert.match(shareSetup, /onMenuShareTimeline/);
+  assert.match(shareSetup, /已触发转发菜单/);
   assert.match(shareSetup, /wechatDebug/);
   assert.match(shareSetup, /debug:\s*debugEnabled/);
   assert.match(shareSetup, /role="status"/);

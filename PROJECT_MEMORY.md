@@ -32,6 +32,7 @@
 - 接入微信公众号 JS-SDK 分享：发布域名验证文件，服务端按同源页面生成 SHA-1 签名并缓存 `access_token/jsapi_ticket`，微信内调用 `updateAppMessageShareData` 和 `updateTimelineShareData`；公众号 AppID 可公开，AppSecret 仅通过服务器运行时环境读取。
 - 增加仅由 `?wechatDebug=1` 启用的微信分享诊断面板：展示微信环境、SDK 加载、页面签名、权限配置和分享接口五个阶段，并在 Android 微信中开启 JS-SDK 原生调试提示；诊断信息不包含 AppSecret、Token、ticket 或签名。
 - 微信分享诊断确认旧个人未认证公众号在 `wx.ready` 后返回 `updateAppMessageShareData:permission denied`；代码已改为从服务器环境同时读取 `WECHAT_APP_ID` 和 `WECHAT_APP_SECRET`，方便切换至已认证服务号且不再硬编码账号。
+- 已认证服务号下现代分享接口返回 `ok` 但 Android 实际仍发送裸链接；保留现代接口并增加官方旧版分享菜单 API 兼容注册，诊断面板会记录实际转发菜单触发、取消或完成状态。
 
 ## 关键决定
 

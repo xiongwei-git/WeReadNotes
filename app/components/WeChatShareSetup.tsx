@@ -21,6 +21,11 @@ type WeChatSharePayload = {
   fail?: (result: WeChatApiResult) => void;
 };
 
+type WeChatLegacySharePayload = WeChatSharePayload & {
+  trigger?: () => void;
+  cancel?: () => void;
+};
+
 type WeChatApiResult = {
   errMsg?: string;
 };
@@ -38,6 +43,8 @@ type WeChatSdk = {
   ready(callback: () => void): void;
   updateAppMessageShareData(payload: WeChatSharePayload): void;
   updateTimelineShareData(payload: WeChatSharePayload): void;
+  onMenuShareAppMessage?: (payload: WeChatLegacySharePayload) => void;
+  onMenuShareTimeline?: (payload: WeChatLegacySharePayload) => void;
 };
 
 type SignatureResponse = {
@@ -281,6 +288,8 @@ export function WeChatShareSetup() {
           jsApiList: [
             "updateAppMessageShareData",
             "updateTimelineShareData",
+            "onMenuShareAppMessage",
+            "onMenuShareTimeline",
           ],
         });
 
@@ -291,17 +300,59 @@ export function WeChatShareSetup() {
 
           updateDiagnostic("config", "success", "wx.ready 已触发");
           updateDiagnostic("share", "pending", "正在设置分享给朋友");
-          const payload: WeChatSharePayload = {
+          const shareContent = {
             title: SHARE_TITLE,
             desc: SHARE_DESCRIPTION,
             link: SHARE_LINK,
             imgUrl: SHARE_IMAGE,
+          };
+          let legacyRegistered = false;
+
+          if (typeof wx.onMenuShareAppMessage === "function") {
+            wx.onMenuShareAppMessage({
+              ...shareContent,
+              trigger: () => {
+                if (!cancelled) {
+                  updateDiagnostic(
+                    "share",
+                    "success",
+                    "已触发转发菜单 · 等待发送",
+                  );
+                }
+              },
+              success: () => {
+                if (!cancelled) {
+                  updateDiagnostic("share", "success", "兼容接口：分享完成");
+                }
+              },
+              cancel: () => {
+                if (!cancelled) {
+                  updateDiagnostic("share", "pending", "已取消转发");
+                }
+              },
+              fail: (result) => {
+                if (!cancelled) {
+                  updateDiagnostic("share", "error", safeWeChatMessage(result));
+                }
+              },
+            });
+            legacyRegistered = true;
+          }
+
+          if (typeof wx.onMenuShareTimeline === "function") {
+            wx.onMenuShareTimeline(shareContent);
+          }
+
+          wx.updateAppMessageShareData({
+            ...shareContent,
             success: () => {
               if (!cancelled) {
                 updateDiagnostic(
                   "share",
                   "success",
-                  "updateAppMessageShareData:ok",
+                  legacyRegistered
+                    ? "现代接口 ok · 兼容菜单已注册"
+                    : "updateAppMessageShareData:ok",
                 );
               }
             },
@@ -310,14 +361,8 @@ export function WeChatShareSetup() {
                 updateDiagnostic("share", "error", safeWeChatMessage(result));
               }
             },
-          };
-          wx.updateAppMessageShareData(payload);
-          wx.updateTimelineShareData({
-            title: SHARE_TITLE,
-            desc: SHARE_DESCRIPTION,
-            link: SHARE_LINK,
-            imgUrl: SHARE_IMAGE,
           });
+          wx.updateTimelineShareData(shareContent);
         });
         wx.error((result) => {
           if (!cancelled) {
