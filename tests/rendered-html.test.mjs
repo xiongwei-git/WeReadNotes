@@ -245,6 +245,14 @@ test("keeps the finished workspace UI and accessible chart interactions", async 
   assert.match(styles, /\.library-scope-controls/);
   assert.match(styles, /\.wordmark \{[\s\S]*font-size: 21px/);
   assert.match(styles, /\.wordmark-symbol/);
+  assert.match(
+    styles,
+    /@media \(max-width: 840px\)[\s\S]*grid-template-areas:\s*"brand account"\s*"nav nav"/,
+  );
+  assert.match(
+    styles,
+    /@media \(max-width: 840px\)[\s\S]*\.workspace-nav \{[\s\S]*position: static;[\s\S]*grid-area: nav;/,
+  );
   await assert.rejects(access(new URL("../app/_sites-preview", import.meta.url)));
   await access(new URL("../public/favicon.svg", import.meta.url));
   await access(new URL("../public/share-cover.png", import.meta.url));
