@@ -43,4 +43,7 @@ next-env.d.ts
 /outputs/
 /work/
 
+# Release media, screenshots, audio, and render QA are private artifacts.
+release/
+
 PROJECT_BRIEF.md
