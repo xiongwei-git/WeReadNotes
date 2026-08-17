@@ -37,6 +37,7 @@
 - 根据发布反馈完成产品宣传片 v3：改用 `release/launch-assets/screenshots/` 中 2560×1318 桌面截图和 432×935 移动端截图，按“首页问题 → API Key → 阅读总览 → 选择有笔记的书 → 笔记回看 → 复制 Markdown → 导出 `.md` → 数据看板 → 移动端”重建 28.842 秒故事线。
 - 完成 v0.2：按书架分组与阅读状态筛选电子书，显示置顶、私密和多分组标识；按需读取书籍资料、当前章节、真实阅读百分比与累计阅读时长。
 - 增加站内版本更新记录，并以 `CHANGELOG.md` 和 `app/lib/release-notes.ts` 分别维护完整记录与页面展示数据；项目版本升级为 `0.2.0`。
+- 完成全局交付修整：代理以流式方式限制请求体，书籍/详情异步请求防止乱序写入；移除未使用的 D1、ChatGPT 和默认静态模板代码，并新增 GitHub Actions 验证。
 
 ## 关键决定
 
@@ -50,10 +51,8 @@
 
 ## 验证状态
 
-- `npm test`：44 项通过（含完整生产构建、宝塔更新保护、微信账号环境配置、JS-SDK 签名与同源限制、分享元数据与品牌资源、API Key 可选存储、v0.2 书架筛选与详情规范化、书库排序、周期标签、Reader ID 转换、同步流程与最小字号回归测试）。
-- v0.2 `npx eslint app tests` 与 `git diff --check` 通过；生产服务 `/` 返回 200，无 API Key 的 `/api/weread` 返回 401 且带 `no-store`。全局 `npx tsc --noEmit` 仍被未跟踪 `release/launch-assets/video-v3/remotion/` 缺少独立 `remotion` 依赖阻断，生产构建已证明当前应用代码可编译。
-- `npm run lint`：通过。
-- `npx tsc --noEmit`：通过。
+- `npm test`：46 项通过（含完整生产构建、宝塔更新保护、微信账号环境配置、JS-SDK 签名与同源限制、分享元数据与品牌资源、API Key 可选存储、v0.2 书架筛选与详情规范化、书库排序、周期标签、Reader ID 转换、同步流程、请求体限制、异步乱序保护与最小字号回归测试）。
+- `npm run lint`、`npx tsc --noEmit` 与 `git diff --check`：通过。根 `tsconfig` 排除私有 `release/` 制品；其中 Remotion 工程保留独立依赖与验证边界。
 - `npm audit --omit=dev`：0 个生产依赖漏洞。
 - 本地 HTTP：`/` 返回 200；无 API Key 请求 `/api/weread` 返回 401 且带 `no-store`。
 - 真实数据脱敏验证：10 本笔记书目、月度统计正常；抽样书籍 7 条划线与 7 条想法最终归入 3 个正确章节，0 个未归类。

@@ -1,6 +1,13 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import {
+  FormEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import {
   DeveloperAboutDialog,
@@ -37,6 +44,7 @@ import {
   saveApiKey,
 } from "./lib/weread-api-key-storage";
 import { CURRENT_VERSION } from "./lib/release-notes";
+import { createLatestRequestGate } from "./lib/latest-request";
 
 type BookInfo = {
   bookId: string;
@@ -677,6 +685,8 @@ export function WeReadApp() {
   const [bookDetailLoading, setBookDetailLoading] = useState(false);
   const [bookDetailError, setBookDetailError] = useState("");
   const [bookDetailWarning, setBookDetailWarning] = useState("");
+  const notesRequestGate = useRef(createLatestRequestGate());
+  const bookDetailRequestGate = useRef(createLatestRequestGate());
 
   const connectWithApiKey = useCallback(
     async (key: string, shouldRemember: boolean) => {
@@ -842,6 +852,8 @@ export function WeReadApp() {
   }
 
   async function openBook(notebook: Notebook) {
+    const notesRequest = notesRequestGate.current.begin();
+    bookDetailRequestGate.current.invalidate();
     setSelectedBook(notebook);
     setView("notes");
     setNotesLoading(true);
@@ -854,18 +866,22 @@ export function WeReadApp() {
     setBookDetailWarning("");
 
     try {
-      setNoteGroups(await loadBookNoteGroups(apiKey, notebook.bookId));
+      const groups = await loadBookNoteGroups(apiKey, notebook.bookId);
+      if (!notesRequest.isCurrent()) return;
+      setNoteGroups(groups);
     } catch (reason) {
+      if (!notesRequest.isCurrent()) return;
       setNotesError(
         reason instanceof Error ? reason.message : "这本书的笔记暂时没有取到。",
       );
     } finally {
-      setNotesLoading(false);
+      if (notesRequest.isCurrent()) setNotesLoading(false);
     }
   }
 
   async function showBookDetail() {
     if (!selectedBook || bookDetailLoading) return;
+    const detailRequest = bookDetailRequestGate.current.begin();
 
     setBookDetailOpen(true);
     if (bookDetail?.bookId === selectedBook.bookId && !bookDetailError) return;
@@ -875,14 +891,16 @@ export function WeReadApp() {
     setBookDetailWarning("");
     try {
       const result = await loadBookDetail(apiKey, selectedBook.bookId);
+      if (!detailRequest.isCurrent()) return;
       setBookDetail(result.detail);
       setBookDetailWarning(result.warning);
     } catch (reason) {
+      if (!detailRequest.isCurrent()) return;
       setBookDetailError(
         reason instanceof Error ? reason.message : "书籍详情暂时无法获取。",
       );
     } finally {
-      setBookDetailLoading(false);
+      if (detailRequest.isCurrent()) setBookDetailLoading(false);
     }
   }
 
@@ -906,6 +924,8 @@ export function WeReadApp() {
   }
 
   function disconnect() {
+    notesRequestGate.current.invalidate();
+    bookDetailRequestGate.current.invalidate();
     clearSavedApiKey(getBrowserApiKeyStorage());
     setApiKey("");
     setRememberApiKey(false);

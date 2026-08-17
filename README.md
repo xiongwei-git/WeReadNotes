@@ -113,6 +113,7 @@ npx tsc --noEmit
 app/
 ├── WeReadApp.tsx            # 工作台界面与数据加载流程
 ├── components/BookDetailDialog.tsx # 书籍详情与阅读进度面板
+├── components/DeveloperAbout.tsx # 关于与版本更新面板
 ├── components/WeReadMark.tsx # 品牌图标
 ├── components/WeChatShareSetup.tsx # 微信内 JS-SDK 分享配置
 ├── api/weread/route.ts      # 微信读书同域只读代理
@@ -121,6 +122,7 @@ app/
 └── lib/
     ├── weread-core.ts       # 数据口径、Reader ID、笔记整理
     ├── release-notes.ts     # 页面内版本更新记录
+    ├── latest-request.ts    # 异步请求防乱序保护
     ├── weread-sync.ts       # 手动同步协调与错误处理
     └── weread-api-key-storage.ts # 可选的浏览器 API Key 存储
 tests/                       # 单元、渲染与同步回归测试

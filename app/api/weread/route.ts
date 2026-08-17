@@ -14,6 +14,8 @@ const responseHeaders = {
   "X-Content-Type-Options": "nosniff",
 };
 
+class RequestBodyTooLargeError extends Error {}
+
 function jsonError(message: string, status: number) {
   return Response.json(
     { errcode: status, errmsg: message },
@@ -21,11 +23,40 @@ function jsonError(message: string, status: number) {
   );
 }
 
+async function readJsonBody(request: Request): Promise<Record<string, unknown>> {
+  const reader = request.body?.getReader();
+  if (!reader) throw new SyntaxError("Missing request body");
+
+  const chunks: Uint8Array[] = [];
+  let byteLength = 0;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    byteLength += value.byteLength;
+    if (byteLength > MAX_REQUEST_BYTES) {
+      await reader.cancel();
+      throw new RequestBodyTooLargeError();
+    }
+    chunks.push(value);
+  }
+
+  const body = new Uint8Array(byteLength);
+  let offset = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+
+  return JSON.parse(new TextDecoder().decode(body)) as Record<string, unknown>;
+}
+
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
-  const contentLength = Number(request.headers.get("content-length") || 0);
-  if (contentLength > MAX_REQUEST_BYTES) {
+  const contentLength = Number(request.headers.get("content-length"));
+  if (Number.isSafeInteger(contentLength) && contentLength > MAX_REQUEST_BYTES) {
     return jsonError("请求内容过大", 413);
   }
 
@@ -36,8 +67,11 @@ export async function POST(request: Request) {
 
   let input: Record<string, unknown>;
   try {
-    input = (await request.json()) as Record<string, unknown>;
-  } catch {
+    input = await readJsonBody(request);
+  } catch (error) {
+    if (error instanceof RequestBodyTooLargeError) {
+      return jsonError("请求内容过大", 413);
+    }
     return jsonError("请求格式无效", 400);
   }
 
