@@ -222,6 +222,9 @@ test("keeps the finished workspace UI and accessible chart interactions", async 
   assert.match(app, /<WeReadMark \/>/);
   assert.match(app, /DeveloperAboutDialog/);
   assert.match(app, />\s*关于\s*</);
+  assert.match(app, /书籍详情/);
+  assert.match(app, /阅读状态/);
+  assert.match(app, /书架分组/);
   assert.match(app, /仅建议在私人设备上开启/);
   assert.match(app, /readSavedApiKey\(getBrowserApiKeyStorage\(\)\)/);
   assert.match(app, /clearSavedApiKey\(getBrowserApiKeyStorage\(\)\)/);
@@ -243,6 +246,8 @@ test("keeps the finished workspace UI and accessible chart interactions", async 
   assert.match(styles, /\.key-row button \{[\s\S]*height: 50px/);
   assert.match(styles, /\.connect-card \.remember-key-option[\s\S]*white-space: nowrap/);
   assert.match(styles, /\.library-scope-controls/);
+  assert.match(styles, /\.library-filter-row/);
+  assert.match(styles, /\.book-detail-dialog/);
   assert.match(styles, /\.wordmark \{[\s\S]*font-size: 21px/);
   assert.match(styles, /\.wordmark-symbol/);
   assert.match(
@@ -258,6 +263,22 @@ test("keeps the finished workspace UI and accessible chart interactions", async 
   await access(new URL("../public/share-cover.png", import.meta.url));
   await access(projectRoot);
   await access(new URL("../public/developer-wechat-qr.png", import.meta.url));
+});
+
+test("publishes a visible v0.2 product update record", async () => {
+  const [packageJson, changelog, about, releaseNotes] = await Promise.all([
+    readFile(new URL("../package.json", import.meta.url), "utf8"),
+    readFile(new URL("../CHANGELOG.md", import.meta.url), "utf8"),
+    readFile(new URL("../app/components/DeveloperAbout.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/lib/release-notes.ts", import.meta.url), "utf8"),
+  ]);
+
+  assert.equal(JSON.parse(packageJson).version, "0.2.0");
+  assert.match(changelog, /## \[0\.2\.0\] - 2026-08-04/);
+  assert.match(changelog, /书籍详情与阅读进度/);
+  assert.match(about, /版本更新/);
+  assert.match(releaseNotes, /CURRENT_VERSION = "0\.2\.0"/);
+  assert.match(about, /CURRENT_VERSION/);
 });
 
 test("keeps all visible pixel-based typography at 12px or larger", async () => {

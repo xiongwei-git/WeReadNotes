@@ -14,6 +14,7 @@ import {
   getBookNoteTotal,
   groupBookNotes,
   mergeShelfReadingMetadata,
+  normalizeBookDetail,
   validateApiKey,
 } from "../app/lib/weread-core.ts";
 
@@ -157,6 +158,134 @@ test("filters the complete library by scope, search, and existing sort modes", (
     }).map((item) => item.id),
     ["book:book-notes", "book:book-plain", "album:album-1", "articles"],
   );
+});
+
+test("models shelf collections and reading status without losing multi-collection books", () => {
+  const items = buildLibraryItems({
+    notebooks: [],
+    shelfBooks: [
+      {
+        bookId: "reading",
+        title: "阅读中的书",
+        readUpdateTime: 200,
+        finishReading: 0,
+      },
+      {
+        bookId: "finished",
+        title: "读完的书",
+        readUpdateTime: 100,
+        finishReading: 1,
+      },
+      {
+        bookId: "unread",
+        title: "还没开始",
+        finishReading: 0,
+      },
+    ],
+    shelfAlbums: [],
+    shelfArchives: [
+      { name: "产品", bookIds: ["reading", "finished"] },
+      { name: "年度精选", bookIds: ["finished"] },
+    ],
+    hasArticleCollection: false,
+  });
+
+  const reading = items.find(
+    (item) => item.kind === "book" && item.bookId === "reading",
+  );
+  const finished = items.find(
+    (item) => item.kind === "book" && item.bookId === "finished",
+  );
+  const unread = items.find(
+    (item) => item.kind === "book" && item.bookId === "unread",
+  );
+
+  assert.ok(reading?.kind === "book");
+  assert.equal(reading.readingStatus, "reading");
+  assert.deepEqual(reading.collectionNames, ["产品"]);
+  assert.ok(finished?.kind === "book");
+  assert.equal(finished.readingStatus, "finished");
+  assert.deepEqual(finished.collectionNames, ["产品", "年度精选"]);
+  assert.ok(unread?.kind === "book");
+  assert.equal(unread.readingStatus, "unread");
+});
+
+test("filters books by shelf collection and reading status", () => {
+  const items = buildLibraryItems({
+    notebooks: [],
+    shelfBooks: [
+      { bookId: "reading", title: "阅读中的书", readUpdateTime: 200 },
+      { bookId: "finished", title: "读完的书", finishReading: 1 },
+      { bookId: "unread", title: "还没开始" },
+    ],
+    shelfAlbums: [],
+    shelfArchives: [{ name: "产品", bookIds: ["reading", "finished"] }],
+    hasArticleCollection: false,
+  });
+
+  assert.deepEqual(
+    filterAndSortLibraryItems(items, {
+      query: "",
+      scope: "all",
+      sortMode: "recent",
+      readingStatus: "finished",
+      collectionName: "all",
+    }).map((item) => item.id),
+    ["book:finished"],
+  );
+  assert.deepEqual(
+    filterAndSortLibraryItems(items, {
+      query: "",
+      scope: "all",
+      sortMode: "title",
+      readingStatus: "all",
+      collectionName: "产品",
+    }).map((item) => item.id),
+    ["book:finished", "book:reading"],
+  );
+});
+
+test("normalizes book details and preserves one-percent reading progress", () => {
+  const detail = normalizeBookDetail(
+    {
+      bookId: "650566",
+      title: "耍猴人",
+      author: "罗纳德·基斯",
+      translator: "张三",
+      intro: "一本书的简介。",
+      publisher: "测试出版社",
+      publishTime: "2024-05",
+      isbn: "9780000000000",
+      wordCount: 123456,
+      newRating: 86,
+      newRatingCount: 1234,
+    },
+    {
+      bookId: "650566",
+      book: {
+        chapterUid: 88,
+        progress: 1,
+        updateTime: 1_753_000_000,
+        recordReadingTime: 3720,
+        isStartReading: 1,
+      },
+    },
+    [{ chapterUid: 88, title: "第一章" }],
+  );
+
+  assert.equal(detail.progress, 1);
+  assert.equal(detail.readingStatus, "reading");
+  assert.equal(detail.currentChapterTitle, "第一章");
+  assert.equal(detail.recordReadingTime, 3720);
+  assert.equal(detail.rating, 86);
+
+  const finished = normalizeBookDetail(
+    null,
+    { book: { progress: 100, finishTime: 1_753_000_100 } },
+    [],
+  );
+  assert.equal(finished.progress, 100);
+  assert.equal(finished.readingStatus, "finished");
 });
 
 test("encodes numeric WeRead API book ids for notebook reader links", () => {

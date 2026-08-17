@@ -3,11 +3,12 @@
 import { useEffect, useRef } from "react";
 
 import { WeReadMark } from "./WeReadMark";
+import { CURRENT_VERSION, PRODUCT_RELEASES } from "../lib/release-notes";
 
 const githubUrl = "https://github.com/xiongwei-git";
 const xUrl = "https://x.com/tedxiongwei";
 
-export function DeveloperCredit({ onWechat }: { onWechat: () => void }) {
+export function DeveloperCredit({ onAbout }: { onAbout: () => void }) {
   return (
     <footer className="developer-footer">
       <span>WeRead Notes 由 Ted 独立开发</span>
@@ -18,7 +19,10 @@ export function DeveloperCredit({ onWechat }: { onWechat: () => void }) {
         <a href={xUrl} target="_blank" rel="noreferrer">
           X
         </a>
-        <button type="button" onClick={onWechat}>
+        <button type="button" onClick={onAbout}>
+          版本更新
+        </button>
+        <button type="button" onClick={onAbout}>
           微信联系
         </button>
       </nav>
@@ -86,6 +90,37 @@ export function DeveloperAboutDialog({
               <strong>@tedxiongwei</strong>
             </a>
           </div>
+          <section className="product-updates" aria-labelledby="product-updates-title">
+            <div className="product-updates-heading">
+              <div>
+                <span className="section-index">WHAT’S NEW</span>
+                <h3 id="product-updates-title">版本更新</h3>
+              </div>
+              <span>v{CURRENT_VERSION}</span>
+            </div>
+            <div className="product-release-list">
+              {PRODUCT_RELEASES.map((release, index) => (
+                <article key={release.version}>
+                  <div>
+                    <strong>v{release.version} · {release.title}</strong>
+                    <time dateTime={release.date}>{release.date}</time>
+                  </div>
+                  <ul>
+                    {release.changes.map((change) => <li key={change}>{change}</li>)}
+                  </ul>
+                  {index === 0 ? <span className="current-release">当前版本</span> : null}
+                </article>
+              ))}
+            </div>
+            <a
+              className="full-changelog-link"
+              href="https://github.com/xiongwei-git/WeReadNotes/blob/main/CHANGELOG.md"
+              target="_blank"
+              rel="noreferrer"
+            >
+              查看完整更新记录
+            </a>
+          </section>
         </div>
 
         <figure className="developer-qr-card">

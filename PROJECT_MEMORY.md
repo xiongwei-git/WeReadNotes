@@ -33,6 +33,11 @@
 - 增加仅由 `?wechatDebug=1` 启用的微信分享诊断面板：展示微信环境、SDK 加载、页面签名、权限配置和分享接口五个阶段，并在 Android 微信中开启 JS-SDK 原生调试提示；诊断信息不包含 AppSecret、Token、ticket 或签名。
 - 微信分享诊断确认旧个人未认证公众号在 `wx.ready` 后返回 `updateAppMessageShareData:permission denied`；代码已改为从服务器环境同时读取 `WECHAT_APP_ID` 和 `WECHAT_APP_SECRET`，方便切换至已认证服务号且不再硬编码账号。
 - 已认证服务号下现代分享接口返回 `ok` 但 Android 实际仍发送裸链接；保留现代接口并增加官方旧版分享菜单 API 兼容注册，诊断面板会记录实际转发菜单触发、取消或完成状态。
+- 完成正式发布素材：公众号文章与配图，以及使用真实页面、Remotion 交互动画、2.5D 运镜、原创 100 BPM 配乐和电影系音效制作的 19.24 秒产品宣传片；测试数据经确认无需模糊，视频不展示当前未实现能力。
+- 根据发布反馈完成产品宣传片 v3：改用 `release/launch-assets/screenshots/` 中 2560×1318 桌面截图和 432×935 移动端截图，按“首页问题 → API Key → 阅读总览 → 选择有笔记的书 → 笔记回看 → 复制 Markdown → 导出 `.md` → 数据看板 → 移动端”重建 28.842 秒故事线。
+- 完成 v0.2：按书架分组与阅读状态筛选电子书，显示置顶、私密和多分组标识；按需读取书籍资料、当前章节、真实阅读百分比与累计阅读时长。
+- 增加站内版本更新记录，并以 `CHANGELOG.md` 和 `app/lib/release-notes.ts` 分别维护完整记录与页面展示数据；项目版本升级为 `0.2.0`。
+- 完成全局交付修整：代理以流式方式限制请求体，书籍/详情异步请求防止乱序写入；移除未使用的 D1、ChatGPT 和默认静态模板代码，并新增 GitHub Actions 验证。
 
 ## 关键决定
 
@@ -41,26 +46,34 @@
 - 不使用 D1、R2 或账号体系；后续若需要跨设备持久化，必须先重新评估 API Key 与用户数据的存储模型。
 - 不在前端直连官方网关，因为实际预检响应不允许第三方 Origin。
 - 官方 `/shelf/sync` 是读取书架的接口，不是触发缓存同步；当前无缓存架构下的“同步”直接重新请求现用数据接口。
+- v0.2 不在加载书架时逐本请求详情；仅在用户打开“书籍详情”时调用 `/book/info`、`/book/getprogress` 和 `/book/chapterinfo`，避免放大接口请求量。
 - 微信分享签名接口只接受 `https://wereadnotes.tedxiong.com` 同源 URL，拒绝跨域签名；不向客户端或错误响应暴露 AppSecret、access token、jsapi ticket 或微信上游错误详情。
 
 ## 验证状态
 
-- `npm test`：40 项通过（含完整生产构建、宝塔更新保护、微信账号环境配置、JS-SDK 签名与同源限制、分享元数据与品牌资源、API Key 可选存储、书库排序、周期标签、Reader ID 转换、同步流程与最小字号回归测试）。
-- `npm run lint`：通过。
-- `npx tsc --noEmit`：通过。
+- `npm test`：46 项通过（含完整生产构建、宝塔更新保护、微信账号环境配置、JS-SDK 签名与同源限制、分享元数据与品牌资源、API Key 可选存储、v0.2 书架筛选与详情规范化、书库排序、周期标签、Reader ID 转换、同步流程、请求体限制、异步乱序保护与最小字号回归测试）。
+- `npm run lint`、`npx tsc --noEmit` 与 `git diff --check`：通过。根 `tsconfig` 排除私有 `release/` 制品；其中 Remotion 工程保留独立依赖与验证边界。
 - `npm audit --omit=dev`：0 个生产依赖漏洞。
 - 本地 HTTP：`/` 返回 200；无 API Key 请求 `/api/weread` 返回 401 且带 `no-store`。
 - 真实数据脱敏验证：10 本笔记书目、月度统计正常；抽样书籍 7 条划线与 7 条想法最终归入 3 个正确章节，0 个未归类。
+- 产品宣传片 v2：1920×1080、30 fps、576 帧视觉时间线，H.264/AAC；母带响度约 -15.4 LUFS，5 个主要切点相对渲后鼓点误差均为 2 帧。
+- 产品宣传片 v2 独立视觉复核最终 PASS：看板俯仰收敛到可读范围，收尾成为视觉峰值且卡片无裁切，工作台字幕与画面证据一致。
+- 产品宣传片 v3：1920×1080、30 fps、864 帧、H.264/AAC；桌面页面未超过源截图分辨率，综合响度约 -16.0 LUFS，7 个关键叙事切点相对渲后鼓点误差均为 2 帧。
+- 产品宣传片 v3 独立成片复核 PASS：指定故事顺序完整，桌面与移动端清晰，选书到笔记详情连续，复制/导出操作与字幕一致，无阻塞性裁切、重叠、穿帮或未完成形变。
 
 ## 待完成
 
+- 将已整合 `origin/main` 的 `agent/readme-site-video` 推送并通过 PR 合入 `main`，再创建 `v0.2.0` 发布标签；宝塔更新脚本只部署 `main`，在此之前不得将 v0.2 视为已发布。
 - 在浏览器中完成一次端到端交互确认后，决定是否发布 Sites 预览版本。
+- 使用真实 API Key 验证 v0.2 的书架分组、阅读状态、书籍详情和进度回包，并在桌面与移动端完成交互验收。
 - 如需跨设备同步，先评审 API Key 加密、数据保留和删除策略；当前不引入数据库。
 - 新认证服务号的验证文件已替换；待在新服务号配置 JS 接口安全域名和服务器出口 IP 白名单，并在宝塔 `.env.production.local` 中填写新 `WECHAT_APP_ID` / `WECHAT_APP_SECRET` 后真机复验。
 
 ## 主要文件
 
 - `app/WeReadApp.tsx`：主要产品界面与数据加载流程。
+- `app/components/BookDetailDialog.tsx`：v0.2 书籍详情、阅读进度与继续阅读入口。
+- `app/lib/release-notes.ts`、`CHANGELOG.md`：站内版本记录与完整更新历史。
 - `app/api/weread/route.ts`：官方网关的安全同域代理。
 - `app/lib/weread-core.ts`：接口白名单、数据口径和笔记合并逻辑。
 - `app/lib/weread-sync.ts`：手动同步的数据加载协调与部分失败策略。
@@ -70,3 +83,20 @@
 - `public/favicon.svg`、`public/share-cover.svg`、`public/share-cover.png`：站点图标与社交分享封面资源。
 - `app/api/wechat/jssdk/route.ts`、`app/lib/wechat-jssdk.ts`、`app/components/WeChatShareSetup.tsx`：微信分享签名、缓存、同源校验和客户端 JS-SDK 配置。
 - `public/MP_verify_AlUm3Z2EKx03wrrt.txt`：新认证服务号的 JS 接口安全域名验证文件。
+- `release/launch-assets/`：公众号发布稿、文章配图、v1 静音视频及 v2/v3 带声产品宣传片；`video-v3/remotion/` 保留当前推荐成片的可复现工程和 QA 证据。
+
+## Project Card
+
+- home: Mac mini
+- category: personal-product
+- runtime: external；官方 API、用户权限、发布与部署状态均须实时核验
+- repository_model: single-repo
+- source_of_truth: 本目录的应用源码、测试、版本记录、部署脚本和项目决策
+- git: GitHub private；`origin` 是唯一权威远端
+- mirror: none
+- vps_source: none
+- sensitivity: 不纳入 API Key、微信凭据、用户书架/笔记、环境文件、完整私密 URL、真实用户数据或发布媒体制品
+- sync: Git clone / pull 到两台工作台；`release/` 下的截图、音频、视频和渲染 QA 由私有制品存储单独管理
+- shared_memory: 不写入项目实现、接口、用户数据、部署或发布细节
+- status: migrated
+- last_reviewed: 2026-08-11

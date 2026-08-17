@@ -27,6 +27,8 @@ type NoteCountSource = {
 export type BookSortMode = "recent" | "notes" | "title";
 export type ReadStatsMode = "weekly" | "monthly" | "annually" | "overall";
 export type LibraryScope = "all" | "notes" | "books" | "albums";
+export type LibraryReadingStatus = "all" | "reading" | "finished" | "unread";
+export type BookReadingStatus = Exclude<LibraryReadingStatus, "all">;
 
 type SortableNotebook = NoteCountSource & {
   bookId: string;
@@ -65,6 +67,12 @@ type LibraryShelfBookSource = {
   readUpdateTime?: number | null;
   secret?: number | null;
   isTop?: number | null;
+  finishReading?: number | null;
+};
+
+type LibraryShelfArchiveSource = {
+  name?: string;
+  bookIds?: string[];
 };
 
 type LibraryShelfAlbumSource = {
@@ -102,6 +110,8 @@ export type LibraryBookItem = LibraryItemBase & {
   deepLink?: string;
   hasNotes: boolean;
   noteTotal: number;
+  readingStatus: BookReadingStatus;
+  collectionNames: string[];
 };
 
 export type LibraryAlbumItem = LibraryItemBase & {
@@ -125,7 +135,68 @@ export type BuildLibraryItemsOptions = {
   notebooks: readonly LibraryNotebookSource[];
   shelfBooks: readonly LibraryShelfBookSource[];
   shelfAlbums: readonly LibraryShelfAlbumSource[];
+  shelfArchives?: readonly LibraryShelfArchiveSource[];
   hasArticleCollection: boolean;
+};
+
+type BookInfoSource = {
+  bookId?: string;
+  deepLink?: string;
+  title?: string;
+  author?: string;
+  translator?: string;
+  cover?: string;
+  intro?: string;
+  category?: string;
+  publisher?: string;
+  publishTime?: string | number;
+  isbn?: string;
+  wordCount?: number;
+  newRating?: number;
+  newRatingCount?: number;
+};
+
+type BookProgressSource = {
+  bookId?: string;
+  book?: {
+    chapterUid?: string | number;
+    chapterOffset?: number;
+    progress?: number;
+    updateTime?: number;
+    recordReadingTime?: number;
+    finishTime?: number;
+    isStartReading?: number | boolean;
+  };
+};
+
+type BookChapterSource = {
+  chapterUid: string | number;
+  title?: string;
+};
+
+export type BookDetail = {
+  bookId?: string;
+  deepLink?: string;
+  title?: string;
+  author?: string;
+  translator?: string;
+  cover?: string;
+  intro?: string;
+  category?: string;
+  publisher?: string;
+  publishTime?: string;
+  isbn?: string;
+  wordCount?: number;
+  rating?: number;
+  ratingCount?: number;
+  progress: number;
+  readingStatus: BookReadingStatus;
+  currentChapterUid?: string;
+  currentChapterTitle?: string;
+  chapterOffset?: number;
+  updateTime?: number;
+  recordReadingTime?: number;
+  finishTime?: number;
 };
 
 type Chapter = {
@@ -456,6 +527,7 @@ export function buildLibraryItems({
   notebooks,
   shelfBooks,
   shelfAlbums,
+  shelfArchives = [],
   hasArticleCollection,
 }: BuildLibraryItemsOptions): LibraryItem[] {
   const notebookByBookId = new Map(
@@ -463,6 +535,19 @@ export function buildLibraryItems({
   );
   const includedBookIds = new Set<string>();
   const items: LibraryItem[] = [];
+  const collectionNamesByBookId = new Map<string, string[]>();
+
+  for (const archive of shelfArchives) {
+    const name = archive.name?.trim();
+    if (!name) continue;
+    for (const rawBookId of archive.bookIds || []) {
+      const bookId = String(rawBookId || "").trim();
+      if (!bookId) continue;
+      const names = collectionNamesByBookId.get(bookId) || [];
+      if (!names.includes(name)) names.push(name);
+      collectionNamesByBookId.set(bookId, names);
+    }
+  }
 
   for (const shelfBook of shelfBooks) {
     const bookId = String(shelfBook.bookId || "").trim();
@@ -489,6 +574,13 @@ export function buildLibraryItems({
       isTop: Number(shelfBook.isTop) === 1,
       hasNotes: Boolean(notebook),
       noteTotal,
+      readingStatus:
+        Number(shelfBook.finishReading) === 1
+          ? "finished"
+          : positiveNumber(shelfBook.readUpdateTime) !== undefined
+            ? "reading"
+            : "unread",
+      collectionNames: collectionNamesByBookId.get(bookId) || [],
     });
   }
 
@@ -511,6 +603,11 @@ export function buildLibraryItems({
       isTop: false,
       hasNotes: true,
       noteTotal: getBookNoteTotal(notebook),
+      readingStatus:
+        positiveNumber(notebook.book.readUpdateTime ?? notebook.sort) !== undefined
+          ? "reading"
+          : "unread",
+      collectionNames: collectionNamesByBookId.get(notebook.bookId) || [],
     });
   }
 
@@ -559,10 +656,14 @@ export function filterAndSortLibraryItems(
     query,
     scope,
     sortMode,
+    readingStatus = "all",
+    collectionName = "all",
   }: {
     query: string;
     scope: LibraryScope;
     sortMode: BookSortMode;
+    readingStatus?: LibraryReadingStatus;
+    collectionName?: string;
   },
 ): LibraryItem[] {
   const keyword = query.trim().toLocaleLowerCase("zh-CN");
@@ -578,6 +679,18 @@ export function filterAndSortLibraryItems(
       }
       if (scope === "books" && item.kind !== "book") return false;
       if (scope === "albums" && item.kind !== "album") return false;
+      if (
+        readingStatus !== "all" &&
+        (item.kind !== "book" || item.readingStatus !== readingStatus)
+      ) {
+        return false;
+      }
+      if (
+        collectionName !== "all" &&
+        (item.kind !== "book" || !item.collectionNames.includes(collectionName))
+      ) {
+        return false;
+      }
       if (!keyword) return true;
 
       return `${item.title} ${item.author || ""}`
@@ -602,6 +715,60 @@ export function filterAndSortLibraryItems(
         Number(right.readUpdateTime || 0) - Number(left.readUpdateTime || 0)
       );
     });
+}
+
+export function normalizeBookDetail(
+  info: BookInfoSource | null | undefined,
+  progressResponse: BookProgressSource | null | undefined,
+  chapters: readonly BookChapterSource[] = [],
+): BookDetail {
+  const progressBook = progressResponse?.book;
+  const rawProgress = Number(progressBook?.progress);
+  const progress = Number.isFinite(rawProgress)
+    ? Math.max(0, Math.min(100, Math.round(rawProgress)))
+    : 0;
+  const currentChapterUid =
+    progressBook?.chapterUid === undefined || progressBook.chapterUid === null
+      ? undefined
+      : String(progressBook.chapterUid);
+  const currentChapterTitle = currentChapterUid
+    ? chapters.find(
+        (chapter) => String(chapter.chapterUid) === currentChapterUid,
+      )?.title?.trim() || undefined
+    : undefined;
+  const started =
+    progressBook?.isStartReading === true ||
+    Number(progressBook?.isStartReading) === 1 ||
+    progress > 0 ||
+    positiveNumber(progressBook?.updateTime) !== undefined;
+
+  return {
+    bookId: info?.bookId || progressResponse?.bookId,
+    deepLink: info?.deepLink,
+    title: info?.title?.trim() || undefined,
+    author: info?.author?.trim() || undefined,
+    translator: info?.translator?.trim() || undefined,
+    cover: info?.cover,
+    intro: info?.intro?.trim() || undefined,
+    category: info?.category?.trim() || undefined,
+    publisher: info?.publisher?.trim() || undefined,
+    publishTime:
+      info?.publishTime === undefined || info.publishTime === null
+        ? undefined
+        : String(info.publishTime),
+    isbn: info?.isbn?.trim() || undefined,
+    wordCount: positiveNumber(info?.wordCount),
+    rating: positiveNumber(info?.newRating),
+    ratingCount: positiveNumber(info?.newRatingCount),
+    progress,
+    readingStatus: progress === 100 ? "finished" : started ? "reading" : "unread",
+    currentChapterUid,
+    currentChapterTitle,
+    chapterOffset: positiveNumber(progressBook?.chapterOffset),
+    updateTime: positiveNumber(progressBook?.updateTime),
+    recordReadingTime: positiveNumber(progressBook?.recordReadingTime),
+    finishTime: positiveNumber(progressBook?.finishTime),
+  };
 }
 
 export function mergeShelfReadingMetadata<

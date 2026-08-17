@@ -576,8 +576,9 @@ button:disabled {
 .developer-dialog {
   width: min(680px, calc(100vw - 36px));
   max-width: none;
+  max-height: calc(100dvh - 36px);
   padding: 0;
-  overflow: visible;
+  overflow: auto;
   border: 1px solid var(--line);
   border-radius: 24px;
   background: var(--card);
@@ -692,6 +693,94 @@ button:disabled {
   white-space: nowrap;
 }
 
+.product-updates {
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1px solid var(--line);
+}
+
+.product-updates-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.product-updates-heading h3 {
+  margin: 5px 0 0;
+  font-family: var(--serif);
+  font-size: 21px;
+  font-weight: 600;
+}
+
+.product-updates-heading > span {
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: var(--green-soft);
+  color: var(--green-deep);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.product-release-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.product-release-list article {
+  position: relative;
+  padding: 13px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: rgba(243, 240, 232, 0.42);
+}
+
+.product-release-list article > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding-right: 0;
+}
+
+.product-release-list strong {
+  font-size: 13px;
+}
+
+.product-release-list time {
+  flex: 0 0 auto;
+  color: var(--quiet);
+  font-size: 12px;
+}
+
+.product-release-list ul {
+  display: grid;
+  gap: 5px;
+  margin: 9px 0 0;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.current-release {
+  display: inline-block;
+  margin-top: 10px;
+  color: var(--green);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.full-changelog-link {
+  display: inline-block;
+  margin-top: 14px;
+  color: var(--green-deep);
+  font-size: 12px;
+  font-weight: 750;
+  text-underline-offset: 4px;
+}
+
 .developer-qr-card {
   align-self: center;
   margin: 0;
@@ -724,6 +813,308 @@ button:disabled {
 .developer-qr-card span {
   color: var(--muted);
   font-size: 12px;
+}
+
+.book-detail-dialog {
+  width: min(760px, calc(100vw - 36px));
+  max-width: none;
+  max-height: calc(100dvh - 36px);
+  padding: 0;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: 0 30px 90px rgba(18, 32, 25, 0.28);
+}
+
+.book-detail-dialog::backdrop {
+  background: rgba(24, 35, 31, 0.56);
+  backdrop-filter: blur(5px);
+}
+
+.book-detail-card {
+  position: relative;
+  padding: 34px;
+}
+
+.book-detail-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: rgba(255, 253, 248, 0.94);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.book-detail-close:hover {
+  border-color: rgba(45, 104, 79, 0.38);
+  color: var(--green-deep);
+}
+
+.book-detail-close svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-width: 1.8;
+}
+
+.book-detail-heading {
+  display: grid;
+  grid-template-columns: 82px minmax(0, 1fr);
+  align-items: center;
+  gap: 20px;
+  padding-right: 50px;
+}
+
+.book-detail-cover {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 82px;
+  height: 116px;
+  overflow: hidden;
+  border-radius: 3px 9px 9px 3px;
+  background: var(--green-soft);
+  box-shadow: 0 12px 26px rgba(27, 39, 33, 0.18);
+}
+
+.book-detail-cover > span {
+  max-width: 70%;
+  color: var(--green-deep);
+  font-family: var(--serif);
+  font-size: 16px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.book-detail-cover img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.book-detail-heading h2 {
+  margin: 6px 0 5px;
+  font-family: var(--serif);
+  font-size: clamp(25px, 4vw, 34px);
+  font-weight: 600;
+  letter-spacing: -0.035em;
+  line-height: 1.18;
+  text-wrap: balance;
+}
+
+.book-detail-heading p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.book-detail-loading,
+.book-detail-error {
+  min-height: 210px;
+  margin-top: 28px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 14px;
+  text-align: center;
+}
+
+.book-detail-loading > span {
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--green-soft);
+  border-top-color: var(--green);
+  border-radius: 50%;
+  animation: spin 800ms linear infinite;
+}
+
+.book-detail-error strong {
+  color: var(--ink);
+  font-family: var(--serif);
+  font-size: 22px;
+}
+
+.book-detail-error p {
+  margin: 0;
+}
+
+.book-detail-error button {
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid var(--green);
+  border-radius: 999px;
+  background: var(--green);
+  color: white;
+  font-size: 13px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.book-detail-warning {
+  margin: 22px 0 -10px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--amber) 28%, var(--line));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--amber) 7%, var(--card));
+  color: #74451f;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.book-progress-card {
+  margin-top: 28px;
+  padding: 22px;
+  border: 1px solid rgba(45, 104, 79, 0.18);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--green-soft) 52%, var(--card));
+}
+
+.book-progress-copy {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 4px 18px;
+}
+
+.book-progress-copy > span {
+  color: var(--green-deep);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.book-progress-copy strong {
+  grid-row: span 2;
+  font-family: var(--serif);
+  font-size: 42px;
+  font-weight: 500;
+  line-height: 0.9;
+}
+
+.book-progress-copy strong small {
+  margin-left: 2px;
+  font-family: var(--sans);
+  font-size: 14px;
+  font-weight: 750;
+}
+
+.book-progress-copy p {
+  margin: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.book-progress-track {
+  display: block;
+  height: 8px;
+  margin: 18px 0;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(45, 104, 79, 0.12);
+}
+
+.book-progress-track i {
+  display: block;
+  min-width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--green);
+}
+
+.book-progress-card dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin: 0;
+}
+
+.book-progress-card dl div,
+.book-metadata-grid div {
+  min-width: 0;
+}
+
+.book-progress-card dt,
+.book-metadata-grid dt {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.book-progress-card dd,
+.book-metadata-grid dd {
+  margin: 5px 0 0;
+  overflow-wrap: anywhere;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.book-metadata-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px 24px;
+  margin: 28px 0;
+  padding: 0 2px;
+}
+
+.book-intro {
+  padding-top: 22px;
+  border-top: 1px solid var(--line);
+}
+
+.book-intro h3 {
+  margin: 0 0 10px;
+  font-family: var(--serif);
+  font-size: 19px;
+}
+
+.book-intro p {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-family: var(--serif);
+  font-size: 15px;
+  line-height: 1.85;
+  text-wrap: pretty;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 6;
+}
+
+.book-detail-reader-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  margin-top: 24px;
+  padding: 0 20px;
+  border-radius: 11px;
+  background: var(--green);
+  color: white;
+  font-size: 14px;
+  font-weight: 750;
+  text-decoration: none;
 }
 
 /* Connected workspace */
@@ -789,6 +1180,9 @@ button:disabled {
 }
 
 .workspace-account .about-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   min-height: 34px;
   padding: 0 4px;
   border: 0;
@@ -797,6 +1191,15 @@ button:disabled {
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
+}
+
+.workspace-account .about-button small {
+  padding: 3px 6px;
+  border-radius: 999px;
+  background: var(--green-soft);
+  color: var(--green-deep);
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .workspace-account .about-button:hover {
@@ -976,6 +1379,43 @@ button:disabled {
   opacity: 0.78;
 }
 
+.library-filter-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin: 0 8px 10px;
+}
+
+.library-filter-row label {
+  min-width: 0;
+}
+
+.library-filter-row label > span {
+  display: block;
+  margin: 0 0 5px 2px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.library-filter-row select {
+  width: 100%;
+  min-width: 0;
+  height: 40px;
+  padding: 0 26px 0 9px;
+  border: 1px solid rgba(55, 65, 59, 0.14);
+  border-radius: 9px;
+  background: rgba(255, 253, 248, 0.72);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.library-filter-row select:hover {
+  border-color: rgba(45, 104, 79, 0.34);
+}
+
 .book-search {
   display: block;
   padding: 0 8px 14px;
@@ -1145,6 +1585,31 @@ button:disabled {
   font-size: 13px;
   font-weight: 800;
   letter-spacing: 0.05em;
+}
+
+.book-list-copy .library-item-badges {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+  overflow: visible;
+  white-space: normal;
+}
+
+.library-item-badges em {
+  max-width: 100%;
+  padding: 3px 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(45, 104, 79, 0.09);
+  color: var(--green-deep);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 750;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .empty-list {
@@ -2388,6 +2853,44 @@ button:disabled {
   .developer-qr-card {
     width: min(230px, 100%);
     justify-self: center;
+  }
+
+  .book-detail-dialog {
+    width: calc(100vw - 24px);
+    max-height: calc(100dvh - 24px);
+    border-radius: 18px;
+  }
+
+  .book-detail-card {
+    padding: 24px 20px 22px;
+  }
+
+  .book-detail-heading {
+    grid-template-columns: 64px minmax(0, 1fr);
+    gap: 14px;
+    padding-right: 36px;
+  }
+
+  .book-detail-cover {
+    width: 64px;
+    height: 91px;
+  }
+
+  .book-detail-heading h2 {
+    font-size: 24px;
+  }
+
+  .book-progress-card {
+    padding: 18px;
+  }
+
+  .book-progress-copy strong {
+    font-size: 36px;
+  }
+
+  .book-progress-card dl,
+  .book-metadata-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .workspace-account {

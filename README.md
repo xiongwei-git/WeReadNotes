@@ -19,6 +19,8 @@
 - 使用微信读书官方 API Key 连接；默认仅保存在当前页面内存，也可由用户主动选择保存在当前浏览器
 - 合并笔记本与书架数据，完整展示电子书、有声书和文章收藏入口
 - 按全部书架、有笔记、电子书和有声书筛选，并支持书名/作者搜索、最近阅读、笔记最多和书名排序
+- 按微信读书书架分组及阅读中、已读完、未开始状态筛选，显示置顶与私密标识
+- 按需查看书籍简介、出版信息、评分、当前章节、真实阅读进度和累计阅读时长
 - 手动同步书目、当前统计周期和已打开书籍的笔记；部分接口失败时保留已有数据
 - 将划线与个人想法合并后按章节组织，并可跳转到正确的微信读书 Web 阅读器页面
 - 一键复制结构化 Markdown，或直接下载 `.md` 笔记文件
@@ -26,6 +28,7 @@
 - 提供阅读节奏、分类偏好、24 小时阅读分布和 Top 书籍看板
 - 支持桌面端与移动端，图表支持鼠标悬浮和键盘聚焦
 - 支持通过微信公众号 JS-SDK 定制微信内分享卡片，并提供可按需启用的分享诊断
+- 在“关于”窗口中查看当前版本与最近更新，完整历史见[更新记录](CHANGELOG.md)
 
 ## 工作方式
 
@@ -109,6 +112,8 @@ npx tsc --noEmit
 ```text
 app/
 ├── WeReadApp.tsx            # 工作台界面与数据加载流程
+├── components/BookDetailDialog.tsx # 书籍详情与阅读进度面板
+├── components/DeveloperAbout.tsx # 关于与版本更新面板
 ├── components/WeReadMark.tsx # 品牌图标
 ├── components/WeChatShareSetup.tsx # 微信内 JS-SDK 分享配置
 ├── api/weread/route.ts      # 微信读书同域只读代理
@@ -116,6 +121,8 @@ app/
 ├── globals.css              # 全局视觉与响应式样式
 └── lib/
     ├── weread-core.ts       # 数据口径、Reader ID、笔记整理
+    ├── release-notes.ts     # 页面内版本更新记录
+    ├── latest-request.ts    # 异步请求防乱序保护
     ├── weread-sync.ts       # 手动同步协调与错误处理
     └── weread-api-key-storage.ts # 可选的浏览器 API Key 存储
 tests/                       # 单元、渲染与同步回归测试
@@ -124,6 +131,7 @@ docs/                        # 调研文档与项目截图
 ├── images/                  # README 截图与视频封面
 └── media/                   # 产品介绍视频
 scripts/baota-update.sh      # 宝塔安全更新与生产构建脚本
+CHANGELOG.md                 # 完整版本更新记录
 ```
 
 ## 部署
