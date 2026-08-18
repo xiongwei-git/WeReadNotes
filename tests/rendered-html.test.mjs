@@ -49,6 +49,46 @@ test("server-renders the WeRead Notes connection experience", async () => {
   assert.doesNotMatch(html, /wrk-[A-Za-z0-9_-]{12,}/);
 });
 
+test("keeps the desktop API Key entry compact enough for the first viewport", async () => {
+  const styles = await readFile(
+    new URL("../app/globals.css", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(
+    styles,
+    /\.connect-copy \{[\s\S]*padding: clamp\(30px, 4vh, 46px\) clamp\(36px, 4vw, 72px\) clamp\(28px, 3vh, 38px\) 54px/,
+  );
+  assert.match(
+    styles,
+    /\.connect-copy > h1 \{[\s\S]*font-size: clamp\(46px, 3\.6vw, 60px\)/,
+  );
+  assert.match(
+    styles,
+    /\.connect-lead \{[\s\S]*margin: 0 0 24px/,
+  );
+  assert.match(
+    styles,
+    /\.developer-footer \{[\s\S]*min-height: 40px/,
+  );
+});
+
+test("keeps the API source badge from squeezing the mobile connection heading", async () => {
+  const styles = await readFile(
+    new URL("../app/globals.css", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(
+    styles,
+    /\.status-pill \{[^}]*white-space: nowrap/,
+  );
+  assert.match(
+    styles,
+    /@media \(max-width: 580px\) \{[\s\S]*\.connect-card-heading \{[\s\S]*flex-direction: column;[\s\S]*align-items: flex-start;[\s\S]*gap: 10px/,
+  );
+});
+
 test("guides users to the API Key card instead of the Skill installation command", async () => {
   const response = await render("/get-api-key");
   assert.equal(response.status, 200);
