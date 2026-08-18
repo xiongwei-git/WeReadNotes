@@ -40,12 +40,29 @@ test("server-renders the WeRead Notes connection experience", async () => {
   assert.doesNotMatch(html, /type="checkbox"[^>]*\schecked(?:=""|\s|>)/);
   assert.doesNotMatch(html, /仅建议在私人设备上开启/);
   assert.match(html, /密钥只保留在当前页面会话/);
+  assert.match(html, /href="\/get-api-key"[^>]*>获取 API Key</);
   assert.match(html, /WeRead Notes 由 Ted 独立开发/);
   assert.match(html, /https:\/\/github\.com\/xiongwei-git/);
   assert.match(html, /https:\/\/x\.com\/tedxiongwei/);
   assert.match(html, /developer-wechat-qr\.png/);
   assert.doesNotMatch(html, /codex-preview|Your site is taking shape|Building your site/i);
   assert.doesNotMatch(html, /wrk-[A-Za-z0-9_-]{12,}/);
+});
+
+test("guides users to the API Key card instead of the Skill installation command", async () => {
+  const response = await render("/get-api-key");
+  assert.equal(response.status, 200);
+
+  const html = await response.text();
+  assert.match(html, /获取微信读书 API Key/);
+  assert.match(html, /不需要复制或安装左侧的 Skill 指令/);
+  assert.match(html, /箭头指向右侧的获取 API Key 卡片/);
+  assert.match(html, /weread-api-key-guide\.png/);
+  assert.match(
+    html,
+    /href="https:\/\/weread\.qq\.com\/r\/weread-skills"[^>]*target="_blank"/,
+  );
+  assert.match(html, />马上去获取 API Key</);
 });
 
 test("publishes complete social sharing metadata and brand assets", async () => {
