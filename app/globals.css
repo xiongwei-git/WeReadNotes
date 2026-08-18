@@ -394,6 +394,179 @@ button:disabled {
   text-underline-offset: 3px;
 }
 
+.api-key-guide-page {
+  min-height: 100dvh;
+  background:
+    linear-gradient(90deg, transparent 49.93%, rgba(45, 104, 79, 0.09) 50%, transparent 50.07%),
+    var(--paper);
+}
+
+.guide-brand-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 76px;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 0 54px;
+  border-bottom: 1px solid rgba(24, 35, 31, 0.12);
+}
+
+.guide-back-link,
+.api-key-guide-secondary-action {
+  color: var(--green-deep);
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.guide-back-link:hover,
+.api-key-guide-secondary-action:hover {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.api-key-guide-content {
+  width: min(100% - 40px, 1120px);
+  margin: 0 auto;
+  padding: clamp(54px, 8vw, 108px) 0 76px;
+}
+
+.api-key-guide-copy {
+  max-width: 760px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.api-key-guide-copy h1 {
+  margin: 18px 0 16px;
+  font-family: var(--serif);
+  font-size: clamp(42px, 6vw, 68px);
+  font-weight: 600;
+  letter-spacing: -0.05em;
+  line-height: 1.08;
+}
+
+.api-key-guide-lead {
+  margin: 0;
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1.8;
+}
+
+.api-key-guide-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  max-width: 690px;
+  margin: 28px auto 0;
+  padding: 14px 16px;
+  border: 1px solid color-mix(in srgb, var(--amber) 44%, var(--line));
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--amber) 9%, var(--card));
+  color: #70431e;
+  text-align: left;
+}
+
+.api-key-guide-notice svg {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  margin-top: 1px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.9;
+}
+
+.api-key-guide-notice p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.api-key-guide-notice strong {
+  display: block;
+  font-weight: 800;
+}
+
+.api-key-guide-figure {
+  margin: 44px 0 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: var(--card);
+  box-shadow: 0 26px 68px rgba(30, 44, 37, 0.11);
+}
+
+.api-key-guide-figure img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 13px;
+}
+
+.api-key-guide-figure figcaption {
+  padding: 12px 4px 2px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+  text-align: center;
+}
+
+.api-key-guide-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 16px 24px;
+  margin: 32px auto 0;
+}
+
+.api-key-guide-primary-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: 52px;
+  padding: 0 22px;
+  border: 1px solid var(--green);
+  border-radius: 12px;
+  background: var(--green);
+  color: white;
+  font-size: 15px;
+  font-weight: 800;
+  text-decoration: none;
+  transition: background 180ms ease, transform 180ms ease;
+}
+
+.api-key-guide-primary-action:hover {
+  background: var(--green-deep);
+}
+
+.api-key-guide-primary-action:active {
+  transform: translateY(1px);
+}
+
+.api-key-guide-primary-action svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.api-key-guide-actions > p {
+  flex-basis: 100%;
+  margin: -6px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+}
+
 .form-error {
   min-height: 18px;
   margin: 10px 0 -8px;
@@ -2648,6 +2821,10 @@ button:disabled {
 }
 
 @media (max-width: 1080px) {
+  .guide-brand-bar {
+    padding-inline: 36px;
+  }
+
   .connect-layout {
     grid-template-columns: 1fr 46%;
   }
@@ -2689,6 +2866,49 @@ button:disabled {
 }
 
 @media (max-width: 840px) {
+  .guide-brand-bar {
+    min-height: 68px;
+    padding-inline: 20px;
+  }
+
+  .api-key-guide-content {
+    width: min(100% - 32px, 1120px);
+    padding-top: 52px;
+  }
+
+  .api-key-guide-copy h1 {
+    font-size: 42px;
+  }
+
+  .api-key-guide-lead {
+    font-size: 14px;
+  }
+
+  .api-key-guide-notice {
+    margin-top: 24px;
+    padding: 13px 14px;
+  }
+
+  .api-key-guide-figure {
+    margin-top: 32px;
+    padding: 8px;
+    border-radius: 16px;
+  }
+
+  .api-key-guide-figure figcaption {
+    padding: 11px 4px 3px;
+    font-size: 12px;
+  }
+
+  .api-key-guide-actions {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .api-key-guide-primary-action {
+    width: 100%;
+  }
+
   .connect-page {
     overflow: visible;
     overflow-x: clip;

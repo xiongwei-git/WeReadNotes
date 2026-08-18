@@ -1209,9 +1209,7 @@ export function WeReadApp() {
                     : "密钥只保留在当前页面会话，不写入数据库或浏览器存储。"}
                 </span>
                 <a
-                  href="https://weread.qq.com/r/weread-skills"
-                  target="_blank"
-                  rel="noreferrer"
+                  href="/get-api-key"
                 >
                   获取 API Key
                 </a>
