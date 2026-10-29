@@ -1,4 +1,4 @@
-export const WEREAD_SKILL_VERSION = "1.0.4";
+export const WEREAD_SKILL_VERSION = "1.0.5";
 
 const endpointParams = {
   "/shelf/sync": [],
@@ -42,6 +42,8 @@ type SortableNotebook = NoteCountSource & {
 
 type ShelfReadingBook = {
   bookId: string;
+  readerLink?: string;
+  deepLink?: string;
   readUpdateTime?: number | null;
 };
 
@@ -53,6 +55,8 @@ type LibraryNotebookSource = NoteCountSource & {
     author?: string;
     cover?: string;
     category?: string;
+    readerLink?: string;
+    deepLink?: string;
     readUpdateTime?: number | null;
   };
 };
@@ -63,6 +67,7 @@ type LibraryShelfBookSource = {
   author?: string;
   cover?: string;
   category?: string;
+  readerLink?: string;
   deepLink?: string;
   readUpdateTime?: number | null;
   secret?: number | null;
@@ -107,6 +112,7 @@ export type LibraryBookItem = LibraryItemBase & {
   kind: "book";
   bookId: string;
   category?: string;
+  readerLink?: string;
   deepLink?: string;
   hasNotes: boolean;
   noteTotal: number;
@@ -141,6 +147,7 @@ export type BuildLibraryItemsOptions = {
 
 type BookInfoSource = {
   bookId?: string;
+  readerLink?: string;
   deepLink?: string;
   title?: string;
   author?: string;
@@ -176,6 +183,7 @@ type BookChapterSource = {
 
 export type BookDetail = {
   bookId?: string;
+  readerLink?: string;
   deepLink?: string;
   title?: string;
   author?: string;
@@ -271,156 +279,37 @@ export function validateApiKey(value: unknown): value is string {
   );
 }
 
-const md5ShiftAmounts = [
-  7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 5, 9, 14,
-  20, 5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20, 4, 11, 16, 23, 4, 11, 16,
-  23, 4, 11, 16, 23, 4, 11, 16, 23, 6, 10, 15, 21, 6, 10, 15, 21, 6, 10,
-  15, 21, 6, 10, 15, 21,
-] as const;
+type WeReadLinks = { readerLink?: string | null; deepLink?: string | null };
 
-const md5Constants = [
-  0xd76aa478, 0xe8c7b756, 0x242070db, 0xc1bdceee, 0xf57c0faf, 0x4787c62a,
-  0xa8304613, 0xfd469501, 0x698098d8, 0x8b44f7af, 0xffff5bb1, 0x895cd7be,
-  0x6b901122, 0xfd987193, 0xa679438e, 0x49b40821, 0xf61e2562, 0xc040b340,
-  0x265e5a51, 0xe9b6c7aa, 0xd62f105d, 0x02441453, 0xd8a1e681, 0xe7d3fbc8,
-  0x21e1cde6, 0xc33707d6, 0xf4d50d87, 0x455a14ed, 0xa9e3e905, 0xfcefa3f8,
-  0x676f02d9, 0x8d2a4c8a, 0xfffa3942, 0x8771f681, 0x6d9d6122, 0xfde5380c,
-  0xa4beea44, 0x4bdecfa9, 0xf6bb4b60, 0xbebfbc70, 0x289b7ec6, 0xeaa127fa,
-  0xd4ef3085, 0x04881d05, 0xd9d4d039, 0xe6db99e5, 0x1fa27cf8, 0xc4ac5665,
-  0xf4292244, 0x432aff97, 0xab9423a7, 0xfc93a039, 0x655b59c3, 0x8f0ccc92,
-  0xffeff47d, 0x85845dd1, 0x6fa87e4f, 0xfe2ce6e0, 0xa3014314, 0x4e0811a1,
-  0xf7537e82, 0xbd3af235, 0x2ad7d2bb, 0xeb86d391,
-] as const;
-
-function rotateLeft(value: number, amount: number): number {
-  return (value << amount) | (value >>> (32 - amount));
-}
-
-function md5(value: string): string {
-  const source = new TextEncoder().encode(value);
-  const paddedLength = Math.ceil((source.length + 9) / 64) * 64;
-  const bytes = new Uint8Array(paddedLength);
-  bytes.set(source);
-  bytes[source.length] = 0x80;
-
-  const bitLength = source.length * 8;
-  for (let index = 0; index < 8; index += 1) {
-    bytes[paddedLength - 8 + index] =
-      Math.floor(bitLength / 2 ** (index * 8)) & 0xff;
+// Only accept official destinations; never derive a URL from a book ID.
+function officialWeReadLink(value: string | null | undefined): string | null {
+  if (!value || value !== value.trim()) return null;
+  try {
+    const url = new URL(value);
+    if (url.username || url.password) return null;
+    if (url.protocol === "https:" && url.hostname === "weread.qq.com" && !url.port) return value;
+    if (url.protocol === "weread:" && url.hostname === "weread") return value;
+  } catch {
+    // Missing or malformed official link: keep the action unavailable.
   }
-
-  let hashA = 0x67452301;
-  let hashB = 0xefcdab89;
-  let hashC = 0x98badcfe;
-  let hashD = 0x10325476;
-  const view = new DataView(bytes.buffer);
-
-  for (let offset = 0; offset < paddedLength; offset += 64) {
-    const words = Array.from({ length: 16 }, (_, index) =>
-      view.getUint32(offset + index * 4, true),
-    );
-    let a = hashA;
-    let b = hashB;
-    let c = hashC;
-    let d = hashD;
-
-    for (let index = 0; index < 64; index += 1) {
-      let mixed: number;
-      let wordIndex: number;
-
-      if (index < 16) {
-        mixed = (b & c) | (~b & d);
-        wordIndex = index;
-      } else if (index < 32) {
-        mixed = (d & b) | (~d & c);
-        wordIndex = (5 * index + 1) % 16;
-      } else if (index < 48) {
-        mixed = b ^ c ^ d;
-        wordIndex = (3 * index + 5) % 16;
-      } else {
-        mixed = c ^ (b | ~d);
-        wordIndex = (7 * index) % 16;
-      }
-
-      const nextD = d;
-      d = c;
-      c = b;
-      const sum = (a + mixed + md5Constants[index] + words[wordIndex]) >>> 0;
-      b = (b + rotateLeft(sum, md5ShiftAmounts[index])) >>> 0;
-      a = nextD;
-    }
-
-    hashA = (hashA + a) >>> 0;
-    hashB = (hashB + b) >>> 0;
-    hashC = (hashC + c) >>> 0;
-    hashD = (hashD + d) >>> 0;
-  }
-
-  return [hashA, hashB, hashC, hashD]
-    .flatMap((word) => [0, 8, 16, 24].map((shift) => (word >>> shift) & 0xff))
-    .map((byte) => byte.toString(16).padStart(2, "0"))
-    .join("");
-}
-
-function isEncodedWeReadReaderId(value: string): boolean {
-  if (value.length <= 3) return false;
-  const payload = value.slice(0, -3);
-  return md5(payload).slice(0, 3) === value.slice(-3);
-}
-
-function encodeWeReadReaderId(bookId: string): string {
-  if (isEncodedWeReadReaderId(bookId)) return bookId;
-
-  const digest = md5(bookId);
-  const isNumeric = /^\d+$/.test(bookId);
-  const parts: string[] = [];
-
-  if (isNumeric) {
-    for (let index = 0; index < bookId.length; index += 9) {
-      const chunk = bookId.slice(index, index + 9);
-      parts.push(Number.parseInt(chunk, 10).toString(16));
-    }
-  } else {
-    let characterCodes = "";
-    for (let index = 0; index < bookId.length; index += 1) {
-      characterCodes += bookId.charCodeAt(index).toString(16);
-    }
-    parts.push(characterCodes);
-  }
-
-  let readerId = `${digest.slice(0, 3)}${isNumeric ? "3" : "4"}2${digest.slice(-2)}`;
-  parts.forEach((part, index) => {
-    readerId += `${part.length.toString(16).padStart(2, "0")}${part}`;
-    if (index < parts.length - 1) readerId += "g";
-  });
-
-  if (readerId.length < 20) {
-    readerId += digest.slice(0, 20 - readerId.length);
-  }
-
-  return `${readerId}${md5(readerId).slice(0, 3)}`;
-}
-
-export function buildWeReadReaderUrl(
-  bookId: string | null | undefined,
-): string | null {
-  const normalizedBookId = bookId?.trim() || "";
-  if (!normalizedBookId || normalizedBookId.length > 160) return null;
-
-  const readerId = encodeWeReadReaderId(normalizedBookId);
-  return `https://weread.qq.com/web/reader/${encodeURIComponent(readerId)}`;
+  return null;
 }
 
 export function buildWeReadNotebookReaderUrl(
-  notebook:
-    | {
-        bookId?: string | null;
-        book?: { bookId?: string | null } | null;
-      }
-    | null
-    | undefined,
+  notebook: (WeReadLinks & { bookId?: string | null; book?: (WeReadLinks & { bookId?: string | null }) | null }) | null | undefined,
 ): string | null {
-  return buildWeReadReaderUrl(notebook?.book?.bookId || notebook?.bookId);
+  return officialWeReadLink(notebook?.book?.readerLink)
+    || officialWeReadLink(notebook?.readerLink)
+    || officialWeReadLink(notebook?.book?.deepLink)
+    || officialWeReadLink(notebook?.deepLink);
+}
+
+export class GatewayUpgradeRequiredError extends Error {}
+
+export function assertGatewayCompatible(data: object): void {
+  if (Object.hasOwn(data, "upgrade_info")) {
+    throw new GatewayUpgradeRequiredError("微信读书接口需要更新，请联系网站维护者更新后重试。");
+  }
 }
 
 export function isAllowedApiName(value: unknown): value is AllowedApiName {
@@ -564,7 +453,8 @@ export function buildLibraryItems({
       author: shelfBook.author?.trim() || notebook?.book.author,
       cover: shelfBook.cover || notebook?.book.cover,
       category: shelfBook.category || notebook?.book.category,
-      deepLink: shelfBook.deepLink,
+      readerLink: shelfBook.readerLink || notebook?.book.readerLink,
+      deepLink: shelfBook.deepLink || notebook?.book.deepLink,
       readUpdateTime: positiveNumber(
         shelfBook.readUpdateTime ??
           notebook?.book.readUpdateTime ??
@@ -596,6 +486,8 @@ export function buildLibraryItems({
       author: notebook.book.author,
       cover: notebook.book.cover,
       category: notebook.book.category,
+      readerLink: notebook.book.readerLink,
+      deepLink: notebook.book.deepLink,
       readUpdateTime: positiveNumber(
         notebook.book.readUpdateTime ?? notebook.sort,
       ),
@@ -744,6 +636,7 @@ export function normalizeBookDetail(
 
   return {
     bookId: info?.bookId || progressResponse?.bookId,
+    readerLink: info?.readerLink,
     deepLink: info?.deepLink,
     title: info?.title?.trim() || undefined,
     author: info?.author?.trim() || undefined,
@@ -774,17 +667,17 @@ export function normalizeBookDetail(
 export function mergeShelfReadingMetadata<
   T extends { bookId: string; book: Record<string, unknown> },
 >(notebooks: readonly T[], shelfBooks: readonly ShelfReadingBook[]): T[] {
-  const readTimeByBookId = new Map(
-    shelfBooks.map((book) => [book.bookId, Number(book.readUpdateTime) || 0]),
-  );
-
+  const shelfByBookId = new Map(shelfBooks.map((book) => [book.bookId, book]));
   return notebooks.map((notebook) => {
-    const readUpdateTime = readTimeByBookId.get(notebook.bookId);
-    if (!readUpdateTime) return { ...notebook, book: { ...notebook.book } };
-
+    const shelfBook = shelfByBookId.get(notebook.bookId);
     return {
       ...notebook,
-      book: { ...notebook.book, readUpdateTime },
+      book: {
+        ...notebook.book,
+        ...(shelfBook?.readerLink ? { readerLink: shelfBook.readerLink } : {}),
+        ...(shelfBook?.deepLink ? { deepLink: shelfBook.deepLink } : {}),
+        ...(shelfBook?.readUpdateTime ? { readUpdateTime: Number(shelfBook.readUpdateTime) } : {}),
+      },
     };
   });
 }
@@ -954,4 +847,15 @@ export function groupBookNotes(
     }))
     .filter((group) => group.items.length > 0)
     .sort((a, b) => a.chapterIdx - b.chapterIdx);
+}
+
+
+export function findGatewayUpgradeError(
+  results: readonly PromiseSettledResult<unknown>[],
+): GatewayUpgradeRequiredError | undefined {
+  for (const result of results) {
+    if (result.status === "rejected" && result.reason instanceof GatewayUpgradeRequiredError) {
+      return result.reason;
+    }
+  }
 }

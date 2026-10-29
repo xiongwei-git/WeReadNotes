@@ -6,7 +6,9 @@ import {
   buildGatewayPayload,
   buildLibraryItems,
   buildWeReadNotebookReaderUrl,
-  buildWeReadReaderUrl,
+  assertGatewayCompatible,
+  findGatewayUpgradeError,
+  GatewayUpgradeRequiredError,
   filterAndSortNotebooks,
   filterAndSortLibraryItems,
   formatDuration,
@@ -288,14 +290,22 @@ test("normalizes book details and preserves one-percent reading progress", () =>
   assert.equal(finished.readingStatus, "finished");
 });
 
-test("encodes numeric WeRead API book ids for notebook reader links", () => {
-  assert.equal(
-    buildWeReadNotebookReaderUrl({
-      bookId: "650566",
-      book: { bookId: "650566" },
-    }),
-    "https://weread.qq.com/web/reader/b8632c0059ed46b8641c4cc",
-  );
+test("uses official links and never synthesizes a link from bookId", () => {
+  const readerLink = "https://weread.qq.com/web/reader/official-test";
+  const deepLink = "weread://weread/cover/test";
+  assert.equal(buildWeReadNotebookReaderUrl({ bookId: "650566", book: { readerLink, deepLink } }), readerLink);
+  assert.equal(buildWeReadNotebookReaderUrl({ book: { deepLink } }), deepLink);
+  assert.equal(buildWeReadNotebookReaderUrl({ bookId: "650566" }), null);
+  assert.equal(buildWeReadNotebookReaderUrl(null), null);
+  assert.equal(buildWeReadNotebookReaderUrl({ book: { readerLink: "javascript:alert(1)", deepLink } }), deepLink);
+  assert.equal(buildWeReadNotebookReaderUrl({ book: { readerLink: "https://evil.example/" } }), null);
+});
+
+test("rejects upgrade notices even when no message is supplied", () => {
+  for (const upgrade_info of [{}, { message: "" }, { message: "upgrade" }, null]) {
+    assert.throws(() => assertGatewayCompatible({ upgrade_info }), /需要更新/);
+  }
+  assert.doesNotThrow(() => assertGatewayCompatible({ books: [] }));
 });
 
 test("searches notebooks by title or author and applies all three sort modes", () => {
@@ -374,18 +384,6 @@ test("formats reading rhythm buckets for each official statistics mode", () => {
   assert.equal(formatReadingBucketLabel(String(timestamp), "overall"), "2026");
 });
 
-test("builds a direct WeRead web reader URL from raw or encoded book ids", () => {
-  assert.equal(
-    buildWeReadReaderUrl("650566"),
-    "https://weread.qq.com/web/reader/b8632c0059ed46b8641c4cc",
-  );
-  assert.equal(
-    buildWeReadReaderUrl("405321205b68794054e53fa"),
-    "https://weread.qq.com/web/reader/405321205b68794054e53fa",
-  );
-  assert.equal(buildWeReadReaderUrl(""), null);
-});
-
 test("accepts only plausible temporary WeRead API keys", () => {
   assert.equal(validateApiKey("wrk-temporary_key-123456"), true);
   assert.equal(validateApiKey("Bearer wrk-temporary_key-123456"), false);
@@ -434,7 +432,7 @@ test("builds a flat, version-pinned, endpoint-specific gateway payload", () => {
       api_name: "/user/notebooks",
       count: 40,
       lastSort: 1778312777,
-      skill_version: "1.0.4",
+      skill_version: "1.0.5",
     },
   );
 
@@ -446,7 +444,7 @@ test("builds a flat, version-pinned, endpoint-specific gateway payload", () => {
   assert.deepEqual(buildGatewayPayload("/book/chapterinfo", { bookId: "book-1" }), {
     api_name: "/book/chapterinfo",
     bookId: "book-1",
-    skill_version: "1.0.4",
+    skill_version: "1.0.5",
   });
 });
 
@@ -583,4 +581,26 @@ test("moves an underline into the review chapter when bookmark chapter ids drift
   if (groups[0].items[0].kind === "underline") {
     assert.equal(groups[0].items[0].thoughts.length, 1);
   }
+});
+
+test("preserves official links through shelf merge and detail normalization", () => {
+  const readerLink = "https://weread.qq.com/web/reader/official-test";
+  const deepLink = "weread://weread/cover/test";
+  const [notebook] = mergeShelfReadingMetadata([{ bookId: "test", book: { bookId: "test", title: "Test" } }], [{ bookId: "test", readerLink, deepLink }]);
+  assert.equal(buildWeReadNotebookReaderUrl(notebook), readerLink);
+  const detail = normalizeBookDetail({ bookId: "test", readerLink, deepLink }, null);
+  assert.equal(detail.readerLink, readerLink);
+  assert.equal(detail.deepLink, deepLink);
+  const [item] = buildLibraryItems({ notebooks: [], shelfBooks: [{ bookId: "test", readerLink, deepLink }], shelfAlbums: [], hasArticleCollection: false });
+  assert.equal(item.kind === "book" && item.readerLink, readerLink);
+});
+
+
+test("keeps upgrade errors visible across partial-success responses", () => {
+  const error = new GatewayUpgradeRequiredError("需要更新");
+  assert.equal(findGatewayUpgradeError([
+    { status: "fulfilled", value: {} },
+    { status: "rejected", reason: error },
+  ]), error);
+  assert.equal(findGatewayUpgradeError([{ status: "rejected", reason: new Error("offline") }]), undefined);
 });

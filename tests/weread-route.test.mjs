@@ -55,3 +55,28 @@ test("rejects an oversized streamed proxy request without Content-Length", async
     globalThis.fetch = originalFetch;
   }
 });
+
+
+test("proxy forwards flat 1.0.5 pagination and preserves official links", async () => {
+  const originalFetch = globalThis.fetch;
+  let payload;
+  const readerLink = "https://weread.qq.com/web/reader/official-test";
+  globalThis.fetch = async (url, init) => {
+    assert.equal(url, "https://i.weread.qq.com/api/agent/gateway");
+    payload = JSON.parse(init.body);
+    return Response.json({ books: [{ bookId: "test", readerLink }], hasMore: 0 });
+  };
+  try {
+    const response = await fetchWorker(new Request("http://localhost/api/weread", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-weread-key": "wrk-test_key_123456789" },
+      body: JSON.stringify({ api_name: "/user/notebooks", count: 100, lastSort: 123, skill_version: "old" }),
+    }));
+    assert.equal(response.status, 200);
+    assert.deepEqual(payload, { api_name: "/user/notebooks", skill_version: "1.0.5", count: 100, lastSort: 123 });
+    assert.equal((await response.json()).books[0].readerLink, readerLink);
+    assert.match(response.headers.get("cache-control"), /no-store/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});

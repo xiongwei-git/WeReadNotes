@@ -16,6 +16,8 @@ import {
 import { BookDetailDialog } from "./components/BookDetailDialog";
 import { WeReadMark } from "./components/WeReadMark";
 import {
+  assertGatewayCompatible,
+  findGatewayUpgradeError,
   buildBookMarkdown,
   buildLibraryItems,
   buildWeReadNotebookReaderUrl,
@@ -47,6 +49,8 @@ import { CURRENT_VERSION } from "./lib/release-notes";
 import { createLatestRequestGate } from "./lib/latest-request";
 
 type BookInfo = {
+  readerLink?: string;
+  deepLink?: string;
   bookId: string;
   title: string;
   author?: string;
@@ -157,6 +161,7 @@ type ChapterInfoResponse = {
 };
 
 type BookInfoResponse = {
+  readerLink?: string;
   errcode?: number;
   errmsg?: string;
   bookId?: string;
@@ -243,9 +248,7 @@ async function callGateway<T extends { errcode?: number; errmsg?: string }>(
     upgrade_info?: { message?: string };
   };
 
-  if (data.upgrade_info?.message) {
-    throw new Error(data.upgrade_info.message);
-  }
+  assertGatewayCompatible(data);
   if (!response.ok || (typeof data.errcode === "number" && data.errcode !== 0)) {
     throw new Error(data.errmsg || "微信读书数据暂时不可用");
   }
@@ -281,6 +284,9 @@ async function loadWorkspaceLibrary(apiKey: string) {
     loadAllNotebooks(apiKey),
     callGateway<ShelfResponse>(apiKey, "/shelf/sync"),
   ]);
+
+  const upgradeError = findGatewayUpgradeError([notebookResult, shelfResult]);
+  if (upgradeError) throw upgradeError;
 
   if (
     notebookResult.status === "rejected" &&
@@ -357,6 +363,9 @@ async function loadBookDetail(apiKey: string, bookId: string) {
     callGateway<BookProgressResponse>(apiKey, "/book/getprogress", { bookId }),
     callGateway<ChapterInfoResponse>(apiKey, "/book/chapterinfo", { bookId }),
   ]);
+
+  const upgradeError = findGatewayUpgradeError([infoResult, progressResult, chapterResult]);
+  if (upgradeError) throw upgradeError;
 
   if (infoResult.status === "rejected" && progressResult.status === "rejected") {
     throw infoResult.reason;
@@ -704,6 +713,12 @@ export function WeReadApp() {
         callGateway<ReadData>(key, "/readdata/detail", { mode: "monthly" }),
       ]);
 
+      const upgradeError = findGatewayUpgradeError([notebookResult, statsResult]);
+      if (upgradeError) {
+        setConnection("idle");
+        setError(upgradeError.message);
+        return;
+      }
       if (notebookResult.status === "rejected") {
         setConnection("idle");
         setError(
@@ -818,7 +833,11 @@ export function WeReadApp() {
     [notebooks],
   );
 
-  const readerUrl = buildWeReadNotebookReaderUrl(selectedBook);
+  const readerUrl = buildWeReadNotebookReaderUrl({
+    readerLink: selectedBook?.book.readerLink,
+    deepLink: selectedBook?.book.deepLink,
+    book: bookDetail?.bookId === selectedBook?.bookId ? bookDetail : null,
+  });
 
   const statsPeriodLabel =
     statsPeriods.find((period) => period.mode === statsMode)?.label || "本月";
@@ -913,6 +932,8 @@ export function WeReadApp() {
         author: item.author,
         cover: item.cover,
         category: item.category,
+        readerLink: item.readerLink,
+        deepLink: item.deepLink,
         readUpdateTime: item.readUpdateTime,
       },
       noteCount: 0,
@@ -1034,6 +1055,8 @@ export function WeReadApp() {
             : Promise.resolve<NoteGroup[] | null>(null),
       });
 
+      const upgradeError = findGatewayUpgradeError([result.stats, result.selectedNotes]);
+      if (upgradeError) throw upgradeError;
       setNotebooks(result.notebooks.books);
       setShelfBooks(result.notebooks.shelfBooks);
       setShelfAlbums(result.notebooks.shelfAlbums);
@@ -1086,7 +1109,9 @@ export function WeReadApp() {
           setBookDetail(refreshedDetail.detail);
           setBookDetailWarning(refreshedDetail.warning);
           setBookDetailError("");
-        } catch {
+        } catch (reason) {
+          const upgradeError = findGatewayUpgradeError([{ status: "rejected", reason }]);
+          if (upgradeError) throw upgradeError;
           hasPartialFailure = true;
           setBookDetailWarning("书籍详情暂时没有更新，已保留原有内容。");
         }
